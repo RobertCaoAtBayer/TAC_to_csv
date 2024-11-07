@@ -59,12 +59,15 @@ class TacConversionToolApp:
         filename = self.file_path.get()
         if os.path.exists(filename):
             print("Converting", filename)
+            current_dir = os.getcwd()
             output_dir = os.path.splitext(filename)[0]
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
+            os.chdir(output_dir)
 
             analyse_compressed_tac_directory(tac_file=filename, output_dir=output_dir, want_all_data=True)
             parse_mcu_main(filename,output_dir=output_dir, new_oad=True)
+            os.chdir(current_dir)
 
 
     def run(self):
