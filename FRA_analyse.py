@@ -111,6 +111,9 @@ class TacReport:
         out_name = os.path.join(self.output_dir, "all_codes.xlsx")
         df.to_excel(out_name, index=False)
         print("Created", out_name, df.shape, df.columns)
+        out_name = os.path.join(self.output_dir, "all_codes.csv")
+        df.to_csv(out_name, index=False)
+        print("Created", out_name)
 
     def split_by_code_name(self):
         out_dir = os.path.join(self.output_dir, "CodeName")
@@ -301,13 +304,27 @@ class TacReport:
     def _process_single_machine_fra(self, serial_number: str, file_list):
         empty_file_count = 0
         code_name_dict = dict()
+        by_serial_dir = os.path.join(self.output_dir, "Serial")
+        if not os.path.exists(by_serial_dir):
+            os.mkdir(by_serial_dir)
+        # serial_filename = os.path.join(by_serial_dir, serial_number + ".csv")
+        feather_filename = os.path.join(by_serial_dir, serial_number + ".feather")
+        if os.path.exists(feather_filename):
+            print("Skip", feather_filename)
+            return
 
         for filename in file_list:
             if os.path.getsize(filename) <= 2:
                 # print("WARNING: empty file", filename)
                 empty_file_count += 1
                 continue
-            data = json.load(open(filename, encoding='utf-8'))
+            try:
+                data = json.load(open(filename, encoding='utf-8'))
+            except json.JSONDecodeError:
+                print("WARNING: skip due to json error for", filename)
+                with open(os.path.join(self.output_dir, "json_error.txt"), "a") as fh:
+                    fh.write(filename + "\n")
+                continue
             # print("loading", name, len(data))
             for row in data:
                 if "CodeName" in row:
@@ -331,11 +348,6 @@ class TacReport:
                         code_name_dict[id_str] = row
 
         if len(code_name_dict) > 0:
-            by_serial_dir = os.path.join(self.output_dir, "Serial")
-            if not os.path.exists(by_serial_dir):
-                os.mkdir(by_serial_dir)
-            # serial_filename = os.path.join(by_serial_dir, serial_number + ".csv")
-            feather_filename = os.path.join(by_serial_dir, serial_number + ".feather")
             df = pd.DataFrame(code_name_dict.values())
             df['ActiveAt'] = pd.to_datetime(df['ActiveAt'])
             df.sort_values('ActiveAt', inplace=True)
@@ -409,7 +421,6 @@ def analyse_compressed_tac_directory(tac_file: str, output_dir: str, want_all_da
                 reporter.combine_all_codes()
             else:
                 print("Skip analyzing", filename)
-
 
     else:
         names, reporter = TacReport.load_zip(tac_file, output_dir, ignore_set, want_all_data)

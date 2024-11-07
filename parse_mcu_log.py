@@ -56,7 +56,13 @@ def extract_mcu_file(path, to_directory='.'):
     try:
         file = opener(path, mode)
         try:
-            for member_name in file.namelist():
+            if hasattr(file, "namelist"):
+                name_list = file.namelist()
+            elif hasattr(file, "getmembers"):
+                name_list = [x.name for x in file.getmembers()]
+            else:
+                name_list = []
+            for member_name in name_list:
                 if "DS_Mcu-Link" in member_name:
                     print("Extracting", member_name)
                     file.extract(member_name, to_directory)

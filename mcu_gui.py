@@ -312,7 +312,7 @@ class InjectDigestData:
 
         x = self.get_phase_time()
         if len(x) <= 2:
-            return None
+            return s1
 
         x = np.array(x)
         dt = x[1:] - x[0:-1]  # delta time step between 2 sample
@@ -321,7 +321,7 @@ class InjectDigestData:
         nz_dt = dt[valid_indices]
         nz_time = time[valid_indices]
         if len(nz_time) < 1:
-            return None
+            return s1
 
         phase_column = self.data[:, 0]
         phase_column = phase_column[1:]
@@ -531,15 +531,18 @@ class InjectDigestData:
                   np.max(pressure_errors),
                   np.average(pressure_errors),
                   np.std(pressure_errors))
-            with open("pressure_error.csv", "a") as fh:
-                arr = [phase_data[0],  # name
-                       phase_data[3],  # flow
-                       np.min(pressure_errors),
-                       np.max(pressure_errors),
-                       np.average(pressure_errors),
-                       np.std(pressure_errors)]
-                arr = [str(x) for x in arr]
-                fh.write(",".join(arr) + "\n")
+            try:
+                with open("pressure_error.csv", "a") as fh:
+                    arr = [phase_data[0],  # name
+                           phase_data[3],  # flow
+                           np.min(pressure_errors),
+                           np.max(pressure_errors),
+                           np.average(pressure_errors),
+                           np.std(pressure_errors)]
+                    arr = [str(x) for x in arr]
+                    fh.write(",".join(arr) + "\n")
+            except:
+                pass
 
             if show_plot:
                 ax = dff.plot("duration_phase_i", ["injection_pressure", "pin_120"])
@@ -549,7 +552,7 @@ class InjectDigestData:
                 plt.close()
 
     # noinspection LongLine
-    def plot(self, protocol: Protocol, **kargs):
+    def plot(self, protocol: Protocol, **kargs) -> list:
         """
         Generate html plot from the inject data with the given protocols
         to be improved: use pandas only, skip numpy array manipulation
@@ -747,7 +750,13 @@ def show_result(**kwargs):
         if is_showing:
             show(column(children=all_figures))
         else:
-            save(column(children=all_figures))
+            try:
+                save(column(children=all_figures))
+            except ValueError:
+                print("Failed to save", html_filename)
+                for fig in all_figures:
+                    print("    type", type(fig))
+
         air_output_filename = os.path.join(dir_name, "all_air_summary.csv")
         first_time = not os.path.exists(air_output_filename)
         air_vol_ul, air_count = dd.get_oad_air_vol()
