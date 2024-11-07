@@ -1,0 +1,79 @@
+<!Doctype html> 
+<html> 
+<head> 
+<title>Injection review</title> 
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+<script>
+var max = 600;
+function pad(n, width) 
+{ 
+    n = n + ''; 
+    return n.length >= width ? n :  
+        new Array(width - n.length + 1).join('0') + n; 
+} 
+function show(inc) {  
+  var page =  parseInt(document.getElementById("pageNumber").value);
+  page += inc
+  if (page < 1) page = 1;
+  if (page > max) page = max;
+
+  var name = "protocol_" + pad(page, 4) + "_injectdigest.html";  
+  console.log("filename: " + name + " val " + page + " inc " + inc);
+
+  document.getElementById('sourceIFrame').src = name; //update the document
+  //update the page
+   //$("#pageNumber").attr('text', page);
+   document.getElementById("pageNumber").value = page;
+}
+
+$(document).ready(function(){
+  document.getElementById("maxNumber").value = max;
+  show(0);
+
+  $("#pageNumber").change(function(){
+     show(0); //refreshing the page with the ne number
+  });
+
+    $("#maxNumber").change(function(){
+      max = parseInt(document.getElementById("maxNumber").value);
+  });
+
+});
+
+</script>
+
+<style>
+.resp-iframe {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+</style>
+
+
+</head> 
+
+<body>
+<nav>
+<div id="idsDiv">
+  <button type="button" class="btn btn-primary" onclick="return show(-100);">Prev 100</button>
+  <button type="button" class="btn btn-primary" onclick="return show(-10);">Prev 10</button>
+  <button type="button" class="btn btn-primary" onclick="return show(-1);">Prev</button>
+  <input id="pageNumber", class="col-1" type="text", value="1"></input>
+  <button type="button" class="btn btn-primary" onclick="return show(1);">Next</button>
+  <button type="button" class="btn btn-primary" onclick="return show(10);">Next 10</button>
+  <button type="button" class="btn btn-primary" onclick="return show(100);">Next 100</button>
+  <span> Max page:</span>
+  <input id="maxNumber", class="col-1" type="text", value="10"></input>
+</div>
+</nav>
+
+<div class="embed-responsive embed-responsive-16by9 resp-iframe">
+  <iframe id="sourceIFrame" frameborder="0" class="embed-responsive-item " src="protocol_0001.html" allowfullscreen></iframe>
+</div>
+
+</body> </html>
