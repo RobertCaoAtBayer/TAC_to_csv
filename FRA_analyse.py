@@ -90,8 +90,8 @@ class TacReport:
             df = pd.DataFrame(unique_arr)
             all_dfs.append(df)
         df = pd.concat(all_dfs)
-        df['ActiveAt'] = pd.to_datetime(df['ActiveAt'])
-        df['InactiveAt'] = pd.to_datetime(df['InactiveAt'])
+        df['ActiveAt'] = pd.to_datetime(df['ActiveAt'], utc=True, format="mixed")
+        df['InactiveAt'] = pd.to_datetime(df['InactiveAt'], utc=True, format="mixed")
 
         df['ActiveAt'] = df['ActiveAt'].dt.tz_localize(None)
         df['InactiveAt'] = df['InactiveAt'].dt.tz_localize(None)
@@ -349,7 +349,7 @@ class TacReport:
 
         if len(code_name_dict) > 0:
             df = pd.DataFrame(code_name_dict.values())
-            df['ActiveAt'] = pd.to_datetime(df['ActiveAt'])
+            df['ActiveAt'] = pd.to_datetime(df['ActiveAt'], utc=True, format="mixed")
             df.sort_values('ActiveAt', inplace=True)
             # df.to_csv(serial_filename, index=False)
             df.reset_index(inplace=True)
@@ -372,7 +372,7 @@ class TacReport:
             unique_code_names = df['CodeName'].unique()
             for code_name in unique_code_names:
                 dff = pd.DataFrame(df[df['CodeName'] == code_name])
-                dff['ActiveAt'] = pd.to_datetime(dff['ActiveAt'])
+                dff['ActiveAt'] = pd.to_datetime(dff['ActiveAt'], utc=True, format="mixed")
                 if len(dff) > 0:
                     code_name_dir = os.path.join(code_name_base_dir, code_name)
                     if not os.path.exists(code_name_dir):
