@@ -1,3 +1,4 @@
+import tkinter
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
@@ -5,7 +6,7 @@ import os.path
 import subprocess
 from parse_mcu_log import main as parse_mcu_main
 from FRA_analyse import analyse_compressed_tac_directory
-from tkinterdnd2 import DND_FILES, TkinterDnD
+# from tkinterdnd2 import DND_FILES, TkinterDnD
 from FRA_adb_injection import generate_injection_plots_from_injection_csv
 
 
@@ -13,7 +14,7 @@ class TacConversionToolApp:
     base_title = "TAC Conversion Tool V1.1"
 
     def __init__(self):
-        self.root = TkinterDnD.Tk()
+        self.root = tkinter.Tk()
         root = self.root
         root.title(self.base_title)
         root.geometry('800x400')
@@ -37,9 +38,9 @@ class TacConversionToolApp:
         tac_frame.columnconfigure(0, weight=1)
 
         # noinspection PyUnresolvedReferences
-        tac_entry.drop_target_register(DND_FILES)
+        # tac_entry.drop_target_register(DND_FILES)
         # noinspection PyUnresolvedReferences
-        tac_entry.dnd_bind('<<Drop>>', self.on_drop_tac)
+        # tac_entry.dnd_bind('<<Drop>>', self.on_drop_tac)
 
         # ADB File Selection
         adb_frame = tk.Frame(root)
@@ -51,9 +52,9 @@ class TacConversionToolApp:
         adb_frame.columnconfigure(0, weight=1)
 
         # noinspection PyUnresolvedReferences
-        adb_entry.drop_target_register(DND_FILES)
+        # adb_entry.drop_target_register(DND_FILES)
         # noinspection PyUnresolvedReferences
-        adb_entry.dnd_bind('<<Drop>>', self.on_drop_adb)
+        # adb_entry.dnd_bind('<<Drop>>', self.on_drop_adb)
 
         # Output File Name
         output_frame = tk.Frame(root)
