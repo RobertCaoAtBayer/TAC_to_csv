@@ -11,7 +11,7 @@ from FRA_adb_injection import generate_injection_plots_from_injection_csv
 
 
 class TacConversionToolApp:
-    base_title = "TAC Conversion Tool V1.1"
+    base_title = "TAC Conversion Tool V1.2"
 
     def __init__(self):
         self.root = tkinter.Tk()
