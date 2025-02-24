@@ -3,12 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 import os.path
-import subprocess
-
-from sqlalchemy import false
-
-from parse_mcu_log import main as parse_mcu_main
-from FRA_analyse import analyse_compressed_tac_directory
+# from parse_mcu_log import main as parse_mcu_main
 # from tkinterdnd2 import DND_FILES, TkinterDnD
 from FRA_adb_injection import generate_injection_plots_from_injection_csv
 from FRA_adb_conversion import process_adb_or_tac_files
@@ -140,7 +135,7 @@ class TacConversionToolApp:
         adb_filename = self.adb_file_path.get()
         output_dir = self.output_file_name.get()
         output_dir = os.path.abspath(output_dir)
-        output_json = false
+        output_json = False
 
         if not os.path.exists(tac_filename):
             tac_filename = None
