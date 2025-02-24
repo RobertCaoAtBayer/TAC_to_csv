@@ -1,0 +1,1 @@
+pyinstaller --onefile --add-data "index.html;." TAC_to_csv.py
