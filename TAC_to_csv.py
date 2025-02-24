@@ -4,10 +4,14 @@ from tkinter import ttk
 from tkinter import filedialog
 import os.path
 import subprocess
+
+from sqlalchemy import false
+
 from parse_mcu_log import main as parse_mcu_main
 from FRA_analyse import analyse_compressed_tac_directory
 # from tkinterdnd2 import DND_FILES, TkinterDnD
 from FRA_adb_injection import generate_injection_plots_from_injection_csv
+from FRA_adb_conversion import process_adb_or_tac_files
 
 
 class TacConversionToolApp:
@@ -20,7 +24,7 @@ class TacConversionToolApp:
         root.geometry('800x400')
         self.tac_file_path = tk.StringVar()
         self.adb_file_path = tk.StringVar()
-        self.output_file_name = tk.StringVar(value="./output")
+        self.output_file_name = tk.StringVar()
         self.checkbox_var = tk.BooleanVar()
         self.selected_dropdown = tk.IntVar(value=100)
         root.minsize(600, 300)
@@ -136,38 +140,29 @@ class TacConversionToolApp:
         adb_filename = self.adb_file_path.get()
         output_dir = self.output_file_name.get()
         output_dir = os.path.abspath(output_dir)
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
-        command_list = ['python', 'FRA_adb_conversion.py', '--output_dir', output_dir]
-        if os.path.exists(tac_filename):
-            print("Converting TAC file:", tac_filename)
+        output_json = false
 
-            self.progress_bar['value'] = 0
-            self.progress_bar['maximum'] = 100
+        if not os.path.exists(tac_filename):
+            tac_filename = None
+        if not os.path.exists(adb_filename):
+            adb_filename = None
+        if adb_filename is None and tac_filename is None:
+            print("Please select either ADB or TAC file")
+            return
 
-            # Perform TAC conversion
-            analyse_compressed_tac_directory(tac_file=tac_filename, output_dir=output_dir, want_all_data=True)
-            parse_mcu_main(tac_filename, output_dir=output_dir, new_oad=True)
-            self.progress_bar['value'] = 50
-            command_list.extend(['--tac', tac_filename])
+        process_adb_or_tac_files(adb_filename, tac_filename, output_dir, output_json)
 
-        if adb_filename:
-            print("Converting ADB file:", adb_filename)
-            command_list.extend(['--adb', adb_filename])
-
-        subprocess.run(command_list)
-
-        if self.checkbox_var.get():
-            plots_dir = os.path.join(output_dir, "injection_plots")
-            os.makedirs(plots_dir, exist_ok=True)
-            print(f"Injection plots will be saved to: {plots_dir}")
-
-            selected_injections = self.selected_dropdown.get()
-            output_dir = "./output"
-            last_n_injections = selected_injections
+        if self.checkbox_var.get() and adb_filename is not None:
             csv_file = os.path.join(output_dir, "injection.csv")  # Adjust this path as needed
-            output_prefix = "PLOT_INJ"
-            generate_injection_plots_from_injection_csv(csv_file, plots_dir, output_prefix, last_n_injections)
+            if os.path.exists(csv_file):
+                plots_dir = os.path.join(output_dir, "injection_plots")
+                os.makedirs(plots_dir, exist_ok=True)
+                print(f"Injection plots will be saved to: {plots_dir}")
+
+                selected_injections = self.selected_dropdown.get()
+                last_n_injections = selected_injections
+                output_prefix = "PLOT_INJ"
+                generate_injection_plots_from_injection_csv(csv_file, plots_dir, output_prefix, last_n_injections)
 
         self.progress_bar['value'] = 100
         print("Conversion completed.")

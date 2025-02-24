@@ -366,18 +366,21 @@ def main():
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
+    adb_filename = args.adb
+    tac_filename = args.tac
+    output_json = args.output_json
+
+    process_adb_or_tac_files(adb_filename, tac_filename, output_dir, output_json)
+
+
+def process_adb_or_tac_files(adb_filename, tac_filename, output_dir, output_json=False):
     adb_df = None
     tac_df = None
-    if args.adb:
-        print("ADB", args.adb)
-        adb_df = adb_zipfile_to_csv(args.adb, output_dir, args.output_json)
-
-    if args.tac:
-        output_dir = args.output_dir
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
-        tac_df = extract_alert_from_tac_report_zip(args.tac, output_dir)
-
+    if adb_filename:
+        print("ADB", adb_filename)
+        adb_df = adb_zipfile_to_csv(adb_filename, output_dir, output_json)
+    if tac_filename:
+        tac_df = extract_alert_from_tac_report_zip(tac_filename, output_dir)
     # combine the adb and tac data frame
     if adb_df is not None and tac_df is not None:
         print("Combining the data frame and remove duplicate")

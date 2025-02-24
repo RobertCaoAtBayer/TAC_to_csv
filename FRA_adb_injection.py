@@ -122,12 +122,13 @@ def generate_injection_plots_from_injection_csv(path: str, output_dir: str = Non
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
 
+    index = 0
     if last_n_injections is not None:
-        index = len(injections_df) - last_n_injections
-        if index > 0:
-            injections_df = injections_df[index:]
+        new_index = len(injections_df) - last_n_injections
+        if new_index > 0:
+            index = new_index
 
-    for i, row in injections_df.iterrows():
+    for i, row in injections_df[index:].iterrows():
         print("row %d/%d" % (int(i), len(injections_df)))
         df, units_dict = extract_cdata(row["samples_xml"])
         timestamp = row["created_date_time"]
