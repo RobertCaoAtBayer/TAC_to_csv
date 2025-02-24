@@ -1,6 +1,6 @@
-pandas 
+pandas
 matplotlib
+numpy
 bokeh
 openpyxl
-# anaconda::pywin32
-pywin32  
+python-dateutil
