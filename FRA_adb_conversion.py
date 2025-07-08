@@ -13,6 +13,7 @@ import json
 import zipfile
 import pyzipper
 from FRA_analyse_mcu_diagnostic_suds import generate_suds_analog_summary
+from FRA_analyse_mcu_diagnostic_message import split_mcu_diagnostics
 # from IPython.core.compilerop import code_name
 
 
@@ -165,6 +166,9 @@ def extract_alert_from_tac_report_zip(zip_file_path: str, output_dir: str) -> pd
             all_alert_map[guid] = value
 
     print("len(all_alert_map)", len(all_alert_map))
+    # Add the keys as a new column 'GUID' to each value dict
+    for guid, value in all_alert_map.items():
+        value['GUID'] = guid
     new_df = pd.DataFrame(all_alert_map.values())
 
     print("Total alerts", len(new_df),"duplicate:", duplicate_counts, " columns:", new_df.columns)
@@ -348,6 +352,9 @@ def generate_output_from_df_for_serial(injector_serial: str, all_df: pd.DataFram
     counts.to_csv(name)
     print("Created", name)
 
+    alert_df = pd.DataFrame(all_df[all_df['CodeName'] == "MCUDiagnosticEventOccurred"])
+    split_mcu_diagnostics(alert_df, output_dir)
+
     generate_suds_analog_summary(all_df, output_dir, injector_serial)
 
 
@@ -379,11 +386,22 @@ def process_adb_or_tac_files(adb_filename, tac_filename, output_dir, output_json
     if adb_filename:
         print("ADB", adb_filename)
         adb_df = adb_zipfile_to_csv(adb_filename, output_dir, output_json)
+        if len(adb_df) == 0:
+            print("No ADB data found in", adb_filename)
+            adb_df = None
+        else:
+            print("ADB data frame", adb_df.shape, adb_df.columns)
     if tac_filename:
         tac_df = extract_alert_from_tac_report_zip(tac_filename, output_dir)
+        if len(tac_df) == 0:
+            print("No TAC data found in", tac_filename)
+            tac_df = None
+        else:
+            print("TAC data frame", tac_df.shape, tac_df.columns)
+
     # combine the adb and tac data frame
     if adb_df is not None and tac_df is not None:
-        print("Combining the data frame and remove duplicate")
+        print("Combining the data frame and remove duplicate", len(adb_df), len(tac_df))
 
         adb_df.set_index('GUID', inplace=True)
         all_dict = adb_df.to_dict("index")

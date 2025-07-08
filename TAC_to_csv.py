@@ -92,19 +92,22 @@ class TacConversionToolApp:
         self.progress_bar.pack(fill='x', expand=True, pady=10)
 
     def open_tac_file_dialog(self):
-        filename = filedialog.askopenfilename(filetypes=[("TAC files", "*.zip")])
+        filename = filedialog.askopenfilename(filetypes=[("TAC files", "*TAC*.zip")])
         if filename:
+            filename = os.path.abspath(filename)
             self.tac_file_path.set(filename)
 
     def open_adb_file_dialog(self):
-        filename = filedialog.askopenfilename(filetypes=[("ADB files", "*.zip"), ("Backup files", "*.backup")])
+        filename = filedialog.askopenfilename(filetypes=[("ADB files", "*ADB*.zip"), ("Backup files", "*.backup")])
         if filename:
+            filename = os.path.abspath(filename)
             self.adb_file_path.set(filename)
 
     def select_output_folder(self):
         folder = filedialog.askdirectory(initialdir=self.output_file_name.get())
         if folder:
             output_folder_path = os.path.join(folder, "output")
+            output_folder_path = os.path.abspath(output_folder_path)
             if not os.path.exists(output_folder_path):
                 os.mkdir(output_folder_path)
                 print(f"Created new folder: {output_folder_path}")

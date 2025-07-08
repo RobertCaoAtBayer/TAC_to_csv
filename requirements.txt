@@ -4,3 +4,5 @@ numpy
 bokeh
 openpyxl
 python-dateutil
+pyzipper
+pgdumplib

@@ -4,11 +4,10 @@ from io import StringIO
 import os.path
 # noinspection PyPep8Naming
 import xml.etree.ElementTree as ET
-
 from matplotlib.pyplot import tight_layout
-from openpyxl.styles.alignment import horizontal_alignments
-from pendulum import duration
-from win32trace import flush
+# from openpyxl.styles.alignment import horizontal_alignments
+# from pendulum import duration
+# from win32trace import flush
 
 
 def get_phase_time(df: pd.DataFrame) -> list:
