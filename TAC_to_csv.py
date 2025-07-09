@@ -96,12 +96,27 @@ class TacConversionToolApp:
         if filename:
             filename = os.path.abspath(filename)
             self.tac_file_path.set(filename)
+            self.set_default_output_directory(filename)
+
+    def set_default_output_directory(self, filename):
+        if len(self.output_file_name.get()) == 0:
+            # Set output folder to the same directory as the TAC file
+            output_folder_path = os.path.dirname(filename)
+            output_folder_path = os.path.join(output_folder_path, "output")
+            output_folder_path = os.path.abspath(output_folder_path)
+            if not os.path.exists(output_folder_path):
+                os.mkdir(output_folder_path)
+                print(f"Created new folder: {output_folder_path}")
+            else:
+                print(f"Folder already exists: {output_folder_path}")
+            self.output_file_name.set(output_folder_path)
 
     def open_adb_file_dialog(self):
         filename = filedialog.askopenfilename(filetypes=[("ADB files", "*ADB*.zip"), ("Backup files", "*.backup")])
         if filename:
             filename = os.path.abspath(filename)
             self.adb_file_path.set(filename)
+            self.set_default_output_directory(filename)
 
     def select_output_folder(self):
         folder = filedialog.askdirectory(initialdir=self.output_file_name.get())
