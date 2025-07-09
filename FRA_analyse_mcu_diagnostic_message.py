@@ -114,40 +114,48 @@ def analyse_slack_diagnostics(slack_filename: str):
     results_df["Vol3"] = vol3
     if "SN" in df.columns:
         results_df["SN"] = df["SN"]
+    results_df["Axis"] = results_df["Axis"].astype(pd.CategoricalDtype(categories=["S0", "C1", "C2"], ordered=True))
+    results_df["Slack"] = results_df["Slack"].astype("int")
+    results_df["Vol1"] = results_df["Vol1"].astype("int")
+    results_df["Vol2"] = results_df["Vol2"].astype("int")
+    results_df["Vol3"] = results_df["Vol3"].astype("int")
+
     output_filename = os.path.splitext(slack_filename)[0] + "_parsed.csv"
     results_df.to_csv(output_filename, index=False)
     print("Created", output_filename)
 
+    # Create boxplots and scatter plots for each serial number
+    output_dir = os.path.dirname(output_filename)
+    output_dir = os.path.join(output_dir, "..")
+    base_name = os.path.splitext(os.path.basename(slack_filename))[0]
     unique_serials  = df["SN"].unique()
-    if len(unique_serials) != 1:
-        print("Multiple serials found in the slack data, skipping boxplot")
-        serial = "%d_injectors" % len(unique_serials)
-    else:
-        serial = unique_serials[0]
+    for serial in unique_serials:
+        sn_df = results_df[results_df["SN"] == serial]
+        ax = sn_df.boxplot(column="Slack", by="Axis", figsize=(12, 8), grid=True)
+        ax.set_title("Boxplot Slack values grouped by Axis for %s (N=%d)" % (serial, len(sn_df)))
+        ax.set_ylabel("Slack volume (.1ml)")
+        ax.set_xlabel("")
+        ax.get_figure().suptitle("")
+        # set tight layout
+        plt.tight_layout()
 
-    results_df["Axis"] = results_df["Axis"].astype(pd.CategoricalDtype(categories=["S0", "C1", "C2"], ordered=True))
-    results_df["Slack"] = results_df["Slack"].astype("int")
-    ax = results_df.boxplot(column="Slack", by="Axis", figsize=(12, 8), grid=True)
-    ax.set_title("Boxplot Slack values by Axis for %s" % serial)
-    ax.set_ylabel("Slack volume (.1ml)")
-    ax.set_xlabel("")
-    output_name = os.path.splitext(slack_filename)[0] + "_%s_boxplot.png" % serial
-    plt.savefig(output_name, dpi=200)
-    plt.clf()
-    plt.close()
-    print("Created", output_name)
+        output_name = os.path.join(output_dir, base_name + "_%s_boxplot.png" % serial)
+        plt.savefig(output_name, dpi=150)
+        plt.clf()
+        plt.close()
+        print("Created", output_name)
 
-    ax = results_df.plot.scatter(x="Vol1", y="Slack", c="Axis", cmap='viridis', alpha=0.5, figsize=(12, 8))
-    ax.set_title("Scatter of slack-volume for %s" % serial)
-    ax.set_ylabel("Slack volume (.1ml)")
-    ax.set_xlabel("Volume (.1ml)")
-    ax.grid(True)
-
-    output_name = os.path.splitext(slack_filename)[0] + "_%s_scatter.png" % serial
-    plt.savefig(output_name, dpi=200)
-    plt.clf()
-    plt.close()
-    print("Created", output_name)
+        ax = sn_df.plot.scatter(x="Vol1", y="Slack", c="Axis", cmap='viridis', alpha=0.5, figsize=(12, 8))
+        ax.set_title("Scatter of slack-volume for %s (N=%d)" % (serial, len(sn_df)))
+        ax.set_ylabel("Slack volume (.1ml)")
+        ax.set_xlabel("Volume (.1ml)")
+        ax.grid(True)
+        plt.tight_layout()
+        output_name = os.path.join(output_dir, base_name + "_%s_scatter.png" % serial)
+        plt.savefig(output_name, dpi=150)
+        plt.clf()
+        plt.close()
+        print("Created", output_name)
 
 
 
