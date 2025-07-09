@@ -4,6 +4,8 @@ based on the MCU diagnostic alert type to allow for easier analysis.
 """
 import pandas as pd
 import os.path
+
+from numpy.ma.extras import unique
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
@@ -73,7 +75,11 @@ def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str) -> list[str]:
         # create a dataframe
         df = pd.DataFrame(data, columns=["ActiveAt", "SN", "Data"])
         output_name = os.path.join(output_dir, f"MCUDiagnosticEventOccurred_{name}.csv")
-        df.to_csv(output_name)
+        try:
+            df.to_csv(output_name)
+        except PermissionError as e:
+            print("Failed to save", output_name, "due to", e)
+
         df['ActiveAt'] = pd.to_datetime(df['ActiveAt'], utc=True, format='mixed')
         df['InactiveAt'] = df['ActiveAt']
 
@@ -109,20 +115,39 @@ def analyse_slack_diagnostics(slack_filename: str):
     if "SN" in df.columns:
         results_df["SN"] = df["SN"]
     output_filename = os.path.splitext(slack_filename)[0] + "_parsed.csv"
-    results_df.to_csv(slack_filename, index=False)
+    results_df.to_csv(output_filename, index=False)
     print("Created", output_filename)
 
-    results_df["Axis"] = results_df["Axis"].astype("category")
+    unique_serials  = df["SN"].unique()
+    if len(unique_serials) != 1:
+        print("Multiple serials found in the slack data, skipping boxplot")
+        serial = "%d_injectors" % len(unique_serials)
+    else:
+        serial = unique_serials[0]
+
+    results_df["Axis"] = results_df["Axis"].astype(pd.CategoricalDtype(categories=["S0", "C1", "C2"], ordered=True))
     results_df["Slack"] = results_df["Slack"].astype("int")
     ax = results_df.boxplot(column="Slack", by="Axis", figsize=(12, 8), grid=True)
-    ax.set_title("Boxplot Slack values by Axis")
+    ax.set_title("Boxplot Slack values by Axis for %s" % serial)
     ax.set_ylabel("Slack volume (.1ml)")
     ax.set_xlabel("")
-
-    output_name = os.path.splitext(slack_filename)[0] + "_boxplot.png"
+    output_name = os.path.splitext(slack_filename)[0] + "_%s_boxplot.png" % serial
     plt.savefig(output_name, dpi=200)
     plt.clf()
     plt.close()
+    print("Created", output_name)
+
+    ax = results_df.plot.scatter(x="Vol1", y="Slack", c="Axis", cmap='viridis', alpha=0.5, figsize=(12, 8))
+    ax.set_title("Scatter of slack-volume for %s" % serial)
+    ax.set_ylabel("Slack volume (.1ml)")
+    ax.set_xlabel("Volume (.1ml)")
+    ax.grid(True)
+
+    output_name = os.path.splitext(slack_filename)[0] + "_%s_scatter.png" % serial
+    plt.savefig(output_name, dpi=200)
+    plt.clf()
+    plt.close()
+    print("Created", output_name)
 
 
 

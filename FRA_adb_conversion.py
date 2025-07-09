@@ -300,6 +300,11 @@ def adb_zipfile_to_csv(zip_file_path: str, output_dir: str, output_json) -> pd.D
                     file.extract(member, output_dir)
                     adb_filename = os.path.join(output_dir, member)
                     return adb_to_csv(adb_filename, output_dir, output_json)
+                if member.endswith(".zip") and member.startswith("CertegraDatabase.certegradb_anonymized."):
+                    print("Extracting", member)
+                    file.extract(member, output_dir)
+                    zip_filename = os.path.join(output_dir, member)
+                    return adb_zipfile_to_csv(zip_filename, output_dir, output_json)
         finally:
             file.close()
     finally:
