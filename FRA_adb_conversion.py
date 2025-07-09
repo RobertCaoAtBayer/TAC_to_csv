@@ -352,10 +352,13 @@ def generate_output_from_df_for_serial(injector_serial: str, all_df: pd.DataFram
     counts.to_csv(name)
     print("Created", name)
 
-    alert_df = pd.DataFrame(all_df[all_df['CodeName'] == "MCUDiagnosticEventOccurred"])
-    split_mcu_diagnostics(alert_df, output_dir)
+    mcu_alert_df = pd.DataFrame(all_df[all_df['CodeName'] == "MCUDiagnosticEventOccurred"])
+    alert_output_dir = os.path.join(output_dir, "CodeName")
+    if not os.path.exists(alert_output_dir):
+        os.makedirs(alert_output_dir)
+    split_mcu_diagnostics(mcu_alert_df, alert_output_dir)
 
-    generate_suds_analog_summary(all_df, output_dir, injector_serial)
+    generate_suds_analog_summary(mcu_alert_df, output_dir, injector_serial)
 
 
 def main():

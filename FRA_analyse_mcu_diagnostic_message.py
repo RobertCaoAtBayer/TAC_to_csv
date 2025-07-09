@@ -19,7 +19,7 @@ def load_mcu_diagnostics(alert_dir: str, start_year="2023", end_year="2030") -> 
     analyser.datetime_filter(start_year, end_year)
     return analyser.get_df()
 
-def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str):
+def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str) -> list[str]:
     """
     Split the dataframe into multiple files based mcu alert type denoted in the 'Data' field where alerts are separated by '|'.
         "Data": "05:09:43.237237:PE:C2:0:0:0:107:-100 | 05:09:43.956956:PE:S0:0:0:0:111:-75 | 05:09:44.254254:PE:C1:0:0:0:122:-88"
@@ -66,6 +66,7 @@ def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str):
                 row = [date_start, sn, ":".join(fields[4:])]
                 all_data[name].append(row)
 
+    alert_filenames = []
     for name, data in all_data.items():
         if len(data) == 0:
             continue
@@ -82,6 +83,8 @@ def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str):
         print("Created", output_name)
         if "Slack" in name:
             analyse_slack_diagnostics(output_name)
+        alert_filenames.append(output_name)
+    return alert_filenames
 
 
 def analyse_slack_diagnostics(slack_filename: str):
