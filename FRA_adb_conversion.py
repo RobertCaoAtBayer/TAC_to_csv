@@ -13,7 +13,7 @@ import json
 import zipfile
 import pyzipper
 from FRA_analyse_mcu_diagnostic_suds import generate_suds_analog_summary
-from FRA_analyse_mcu_diagnostic_message import split_mcu_diagnostics
+from FRA_analyse_mcu_diagnostic_message import split_mcu_diagnostics, analyse_slack_diagnostics
 # from IPython.core.compilerop import code_name
 
 
@@ -166,6 +166,8 @@ def extract_alert_from_tac_report_zip(zip_file_path: str, output_dir: str) -> pd
             all_alert_map[guid] = value
 
     print("len(all_alert_map)", len(all_alert_map))
+    if len(all_alert_map) == 0:
+        return pd.DataFrame()
     # Add the keys as a new column 'GUID' to each value dict
     for guid, value in all_alert_map.items():
         value['GUID'] = guid
@@ -277,15 +279,19 @@ def adb_zipfile_to_csv(zip_file_path: str, output_dir: str, output_json) -> pd.D
         return adb_to_csv(zip_file_path, output_dir, output_json)
     return_df = pd.DataFrame()
 
-    with pyzipper.AESZipFile(zip_file_path, 'r', compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as extracted_zip:
-        password = "C3rt3gr@!".encode("utf8")
-        for info in extracted_zip.infolist():
-            if info.filename.endswith(".backup"):
-                print("Extracting", info.filename)
-                extracted_zip.extract(info, path=output_dir, pwd=password)
-                name = os.path.join(output_dir, info.filename)
-                print("extracted to", name)
-                return adb_to_csv(name, output_dir, output_json)
+    try:
+        with pyzipper.AESZipFile(zip_file_path, 'r', compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as extracted_zip:
+            password = "C3rt3gr@!".encode("utf8")
+            for info in extracted_zip.infolist():
+                if info.filename.endswith(".backup"):
+                    print("Extracting", info.filename)
+                    extracted_zip.extract(info, path=output_dir, pwd=password)
+                    name = os.path.join(output_dir, info.filename)
+                    print("extracted to", name)
+                    return adb_to_csv(name, output_dir, output_json)
+    except pyzipper.zipfile.BadZipFile:
+        print("Bad zip file", zip_file_path)
+        # try again
 
     opener, mode = zipfile.ZipFile, 'r'
     try:
@@ -361,7 +367,11 @@ def generate_output_from_df_for_serial(injector_serial: str, all_df: pd.DataFram
     alert_output_dir = os.path.join(output_dir, "CodeName")
     if not os.path.exists(alert_output_dir):
         os.makedirs(alert_output_dir)
-    split_mcu_diagnostics(mcu_alert_df, alert_output_dir)
+    output_filenames = split_mcu_diagnostics(mcu_alert_df, alert_output_dir)
+    for filename in output_filenames:
+        base_name = os.path.basename(filename)
+        if "Slack" in base_name:
+            analyse_slack_diagnostics(filename)
 
     generate_suds_analog_summary(mcu_alert_df, output_dir, injector_serial)
 

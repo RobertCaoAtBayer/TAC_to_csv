@@ -87,8 +87,6 @@ def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str) -> list[str]:
         output_name = os.path.join(output_dir, f"MCUDiagnosticEventOccurred_{name}.feather")
         df.to_feather(output_name)
         print("Created", output_name)
-        if "Slack" in name:
-            analyse_slack_diagnostics(output_name)
         alert_filenames.append(output_name)
     return alert_filenames
 
@@ -124,9 +122,12 @@ def analyse_slack_diagnostics(slack_filename: str):
     results_df.to_csv(output_filename, index=False)
     print("Created", output_filename)
 
-    # Create boxplots and scatter plots for each serial number
+    # Create boxplots and scatter plots for each serial number in the Slack directory
     output_dir = os.path.dirname(output_filename)
-    output_dir = os.path.join(output_dir, "..")
+    output_dir = os.path.join(output_dir, "Slack")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     base_name = os.path.splitext(os.path.basename(slack_filename))[0]
     unique_serials  = df["SN"].unique()
     for serial in unique_serials:
@@ -159,10 +160,6 @@ def analyse_slack_diagnostics(slack_filename: str):
 
 
 
-
-
-
-
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='FRA analysing MCU diagnostic alert message')
@@ -173,7 +170,12 @@ def main():
                         help='Show plot')
     args = parser.parse_args()
     df = load_mcu_diagnostics(args.alert_dir)
-    split_mcu_diagnostics(df, args.output_dir)
+    output_filenames = split_mcu_diagnostics(df, args.output_dir)
+    for filename in output_filenames:
+        base_name = os.path.basename(filename)
+        if "Slack" in base_name:
+            analyse_slack_diagnostics(filename)
+
     print(df.shape, df.columns)
 
 
