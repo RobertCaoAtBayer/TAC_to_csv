@@ -115,7 +115,10 @@ Stopcock_map = {v: i for i, v in enumerate(Stopcock_id_to_name)}
 
 class InjectDigestCommand(Command):
     header = [
-        "phase", "adaptive_flow", "scheduled_pulsing_active", "unscheduled_pulsing_active",
+        "phase",
+        "adaptive_flow",
+        "scheduled_pulsing_active",
+        "unscheduled_pulsing_active",
         "injection_pressure",
         "saline_pressure",
         "contrast1_pressure",
@@ -139,10 +142,10 @@ class InjectDigestCommand(Command):
         "contrast1_phase_compliance",
         "contrast2_phase_compliance",
         "patient_line_aircounts",
-        "Pressure_adc",     # "pin_120",
-        "dP",    # "pin_121",
-        'INJECT_PRESSURE', # "patient_line_air_volume_ul",     # "pin_122",
-        "max_pressure",     # "3mm_port",
+        "Pressure_adc",                 # "pin_120",
+        "dP",                           # "pin_121",
+        "patient_line_air_volume_ul",   #  'INJECT_PRESSURE' aka "pin_122",
+        "max_pressure",                 # "3mm_port",
         "saline_flowrate_phase",
         "contrast1_flow_rate_phase",
         "contrast2_flow_rate_phase",
