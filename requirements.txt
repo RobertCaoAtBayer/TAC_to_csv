@@ -1,4 +1,5 @@
 pandas
+pandas-stubs
 matplotlib
 numpy
 bokeh
