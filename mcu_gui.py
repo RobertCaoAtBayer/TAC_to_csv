@@ -230,10 +230,13 @@ class InjectDigestData:
         """Plot the outlet air detector result (old firmware does not have OAD volume log)"""
         ts, te = self.get_air_start_end_time()
         if ts >= te:
-            print("Skip OAD because it is empty", ts, te)
+            print("Skip OAD plot because it is empty", ts, te)
             return ts, te
         df = self.get_df()
         cdf = pd.DataFrame(df[df['Time(s)'].between(ts - 0.2, te + 0.2)])
+        if len(cdf) == 0:
+            print("No data in the time range", ts, te)
+            return 0, 0
         cdf['air_count'] = cdf['patient_line_aircounts']
         cdf['delta_air_count'] = cdf.air_count.diff()
 
@@ -265,9 +268,16 @@ class InjectDigestData:
             print("Skip OAD because it is empty", ts, te)
             return ts, te
         df = self.get_df()
+        if len(df) == 0:
+            return 0, 0
         cdf = pd.DataFrame(df[df['Time(s)'].between(ts - 0.1, te + 0.1)])
+
+        if 'patient_line_air_volume_ul' not in cdf.columns or 'patient_line_aircounts' not in cdf.columns:
+            print("No patient line air volume log")
+            return 0, 0
         cdf['air_vol(ml)'] = cdf['patient_line_air_volume_ul'] / 1000
         cdf['air_count'] = cdf['patient_line_aircounts']
+
 
         ax = cdf.plot("Time(s)", "air_vol(ml)", c='orange')
         ax.grid()
@@ -785,7 +795,8 @@ def show_result(**kwargs):
         png_name = os.path.splitext(inject_digest_csv_filename)[0] + "-air.png"
 
         new_oad = 'new_oad' in kwargs and kwargs['new_oad']
-        if new_oad:
+        df = dd.get_df()
+        if "patient_line_air_volume_ul" in df.columns: # new OAD data
             dd.plot_oad(png_name)
         else:
             dd.plot_oad_air_count(png_name)

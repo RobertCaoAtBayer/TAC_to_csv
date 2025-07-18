@@ -151,7 +151,7 @@ def combine_mcu_link_log(log_list: list) -> str:
     return out_name
 
 
-def main(log_filename, output_dir, new_oad: bool):
+def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     file_list = []
@@ -198,4 +198,4 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default=".", help='output directory')
     parser.add_argument('--new_oad', action='store_true', help='Data capture with new INJECTDIGEST (has air volume)')
     args = parser.parse_args()
-    main(args.log_filename, args.output_dir, args.new_oad)
+    process_mcu_log_or_zip(args.log_filename, args.output_dir, args.new_oad)

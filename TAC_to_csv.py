@@ -7,6 +7,7 @@ import os.path
 # from tkinterdnd2 import DND_FILES, TkinterDnD
 from FRA_adb_injection import generate_injection_plots_from_injection_csv
 from FRA_adb_conversion import process_adb_or_tac_files
+from parse_mcu_log import process_mcu_log_or_zip
 
 
 class TacConversionToolApp:
@@ -92,7 +93,7 @@ class TacConversionToolApp:
         self.progress_bar.pack(fill='x', expand=True, pady=10)
 
     def open_tac_file_dialog(self):
-        filename = filedialog.askopenfilename(filetypes=[("TAC files", "*TAC*.zip")])
+        filename = filedialog.askopenfilename(filetypes=[("TAC files", "*TAC*.zip"), ("SRU log files", "*SRU*.tar.gz"), ("Tar.gz files", "*.tar.gz")])
         if filename:
             filename = os.path.abspath(filename)
             self.tac_file_path.set(filename)
@@ -162,6 +163,10 @@ class TacConversionToolApp:
         if adb_filename is None and tac_filename is None:
             print("Please select either ADB or TAC file")
             return
+        if tac_filename is not None:
+            process_mcu_log_or_zip(tac_filename, output_dir, new_oad=True)
+            if tac_filename.endswith("tar.gz"):
+                tac_filename = None     # No alert info in SRU log, so we don't need to process it further
 
         process_adb_or_tac_files(adb_filename, tac_filename, output_dir, output_json)
 

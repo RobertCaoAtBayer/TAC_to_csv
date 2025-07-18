@@ -112,32 +112,32 @@ def merge_duplicate_alerts(alert1: dict, alert2: dict) -> dict:
                 print("WARNING: not the same InactiveAt. Not expect to be here")
                 print(alert1)
                 print(alert2)
-        # assume both alert are the same
+        # assume both alerts are the same
         return alert1
 
+# noinspection DuplicatedCode
+def extract_compressed_file(filename: str, to_directory='.') -> list:
+    opener, mode = pyzipper.ZipFile, 'r'
+
+    names = []
+    try:
+        file = opener(filename, mode)
+        try:
+            for member in file.namelist():   # FlightRecorder-2024-05-29.json
+                if "FlightRecorder-" in member and member.endswith(".json"):
+                    print("Extracting", member)
+                    file.extract(member, to_directory)
+                    names.append(os.path.join(to_directory, member))
+        finally:
+            file.close()
+    finally:
+        pass
+
+    names = sorted(names)
+    return names
 
 def extract_alert_from_tac_report_zip(zip_file_path: str, output_dir: str) -> pd.DataFrame:
     """Extract alert from TACReport zip file"""
-
-    # noinspection DuplicatedCode
-    def extract_compressed_file(filename: str, to_directory='.') -> list:
-        opener, mode = pyzipper.ZipFile, 'r'
-
-        names = []
-        try:
-            file = opener(filename, mode)
-            try:
-                for member in file.namelist():   # FlightRecorder-2024-05-29.json
-                    if "FlightRecorder-" in member and member.endswith(".json"):
-                        print("Extracting", member)
-                        file.extract(member, to_directory)
-                        names.append(os.path.join(to_directory, member))
-            finally:
-                file.close()
-        finally:
-            pass
-        names = sorted(names)
-        return names
 
     file_list = extract_compressed_file(zip_file_path, output_dir)
     all_alert_map = {}
