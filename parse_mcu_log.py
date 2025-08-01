@@ -1,14 +1,63 @@
 """
 Parsing injection log.
 """
-from Commands import InjectDigestCommand
+import csv
+
+from Commands import InjectDigestCommand, DigestCommand
+from alarms import Alarms
 import os
 import zipfile
 import tarfile
 from mcu_gui import show_result
 import shutil
 import pandas as pd
+import os.path
 
+
+class DigestsData:
+
+    def __init__(self):
+        self.data = []
+
+    def from_mcu_log(self, log_filename):
+        with open(log_filename, 'r') as file:
+            for line in file:
+                if "RX: [DIGEST][][" in line:
+                    parts = line.split("[")
+                    digest_data = parts[3].split("]")[0]
+                    digest_time = parts[0].split(" ")[0].strip()
+                    digest_data = digest_data.split(",")
+
+                    # decode the alarms field - the first field in digest_data
+                    alarms_str = digest_data[0]
+                    if alarms_str != "0":
+                        alarm_strs = Alarms.get_alarm_names(alarms_str)
+                        alarms_str = ":".join(alarm_strs)
+                        print("Alarms:", alarms_str)
+                    else:
+                        alarms_str = ""
+                    digest_data.append(alarms_str)
+
+                    print(digest_time,  digest_data)
+
+                    if len(parts) > 1:
+                        self.data.append([digest_time] +  digest_data)
+
+    def save_digests(self, output_filename):
+        header = DigestCommand.header + ["alarms"]
+        # Save the digests to a CSV file
+        with open(output_filename, 'w') as file:
+            csv_writer = csv.writer(file, dialect='excel', lineterminator='\n')
+            csv_writer.writerow(["time"] + header)
+            # Write each digest as a row in the CSV file
+            csv_writer.writerows(self.data)
+            print(f"Digests saved to {output_filename}")
+
+
+def extract_digests(log_filename):
+    digest_data = DigestsData()
+    digest_data.from_mcu_log(log_filename)
+    digest_data.save_digests(os.path.splitext(log_filename)[0] + "_digests.csv")
 
 def get_sru_log_file_list(prefix):
     return [prefix + "." + ext for ext in ['old3.log', 'old2.log', 'old1.log', 'log']]
@@ -173,6 +222,7 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         combine_log_name = combine_mcu_link_log(log_list)
         if os.path.exists(combine_log_name):
             file_list = file_list + extract_all_injections(combine_log_name, output_dir, len(file_list) + 1)
+            extract_digests(combine_log_name)
 
     # plotting
     # copy index.html for viewing the output

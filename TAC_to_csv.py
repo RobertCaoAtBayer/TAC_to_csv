@@ -101,9 +101,10 @@ class TacConversionToolApp:
 
     def set_default_output_directory(self, filename):
         if len(self.output_file_name.get()) == 0:
-            # Set output folder to the same directory as the TAC file
+            # Set the output folder to the same directory as the TAC file
+            base_name = os.path.splitext(os.path.basename(filename))[0]
             output_folder_path = os.path.dirname(filename)
-            output_folder_path = os.path.join(output_folder_path, "output")
+            output_folder_path = os.path.join(output_folder_path, "output-" + base_name)
             output_folder_path = os.path.abspath(output_folder_path)
             if not os.path.exists(output_folder_path):
                 os.mkdir(output_folder_path)
