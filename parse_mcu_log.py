@@ -188,7 +188,7 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                 digest_name = os.path.join(out_dir, "protocol_%04d_digest.csv" % (injected_count,))
                 digest_fh = open(digest_name, "w")
                 digest_fh.write(arm.strip() + " " + arm_time + '\n')
-                digest_fh.write(",".join(["time", "inject_index"] + DigestCommand.header))
+                digest_fh.write(",".join(["time", "inject_index"] + DigestCommand.header) + '\n')
                 inject_complete_state = ""
 
                 injected_count += 1
@@ -216,7 +216,15 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                         print("End of injection detected at", time_str, "in", filename)
                         inject_complete_state = arr[2]
                         print("Inject complete state:", inject_complete_state)
-                        info_line = ",".join([arm_time, time_str, str(injected_count), inject_complete_state, arm]) + "\n"
+                        info_line = ",".join([
+                            arm_time,
+                            time_str,
+                            str(injected_count),
+                            os.path.basename(inject_digest_name),
+                            os.path.basename(digest_name),
+                            inject_complete_state,
+                            arm
+                        ]) + "\n"
                         summary_fh.write(info_line)
 
                         all_commands_fh.write(digest_line + "\n")
@@ -289,7 +297,27 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         shutil.copy(src_index_filename, dst_index_filename)
 
     for name in file_list:
-        show_result(csv_filename=name, filename_list=[name], new_oad=new_oad)
+        file_list = [os.path.basename(name)]
+        digest_name = "_".join(name.split("_")[:-1] + ["digest.csv"])
+        if os.path.exists(digest_name):
+            digest_df = pd.read_csv(digest_name, skiprows=1)
+            if len(digest_df):
+                file_list.append(os.path.basename(digest_name))
+                first_row = digest_df.iloc[0]
+                last_row = digest_df.iloc[-1]
+                start_vols = [float(x) for x in [first_row["vol1"], first_row["vol2"], first_row["vol3"]]]
+                end_vols = [float(x) for x in [last_row["vol1"], last_row["vol2"], last_row["vol3"]]]
+            else:
+                start_vols = end_vols = [0.0, 0.0, 0.0]
+            show_result(
+                csv_filename=name,
+                new_oad=new_oad,
+                start_volumes=start_vols,
+                end_volumes=end_vols,
+                filename_list=file_list,
+            )
+        else:
+            show_result(csv_filename=name, filename_list=file_list, new_oad=new_oad, )
 
     print("Done")
 

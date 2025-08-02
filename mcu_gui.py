@@ -703,6 +703,7 @@ class InjectDigestData:
             actual_volumes = self.get_phase_volumes(phase)
             expected_volumes = protocol.get_phase_volumes(phase)
             vol_errors = [actual - expect for actual, expect in zip(actual_volumes, expected_volumes)]
+            vol_errors = [float(round(x, 1)) for x in vol_errors]
             all_figures = [PreText(text='Phase %d volume error: %s - %s = %s' %
                                         (phase, str(actual_volumes), str(expected_volumes), str(vol_errors)))
                            ] + all_figures
