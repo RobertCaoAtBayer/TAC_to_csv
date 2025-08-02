@@ -141,41 +141,90 @@ def extract_mcu_file(path, to_directory='.'):
 def extract_all_injections(filename, out_dir, injected_count=0):
     found = False
     index = 0
-    out_fh = None
+    inject_digest_fh = None
+    digest_fh = None
     file_list = list()
-
+    inject_complete_state = ""
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
+    # all commands in the log file excluding injectdigest and digest commands
+    all_commands_fh = open(os.path.join(out_dir, "all_commands.txt"), "w")
+
+    summary_filename = os.path.join(out_dir, "all_injections.txt")
+    summary_fh = open(summary_filename, "w")
+    summary_fh.write("Extracting injections from %s\n" % filename)
+    summary_fh.write("Output directory: %s\n" % out_dir)
+
     with open(filename) as fh:
         for line in fh:
+            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line:
+                all_commands_fh.write(line.strip() + "\n")
+
             if "TX: >ARM" in line:
+                arm_line = line.strip()
                 # "0906-04:39:23.829 INFO : TX: >ARM@2068,1,SALINE,40,75,SALINE,0,100.0,10.0,0\"
                 arm = line.split(":")[-1].strip()[:-1]
                 arm_time = line.split(" ")[0]
                 print("At", arm_time,  arm)
                 found = True
                 index = 0
-                if out_fh:
-                    out_fh.close()
+                if inject_digest_fh:
+                    inject_digest_fh.close()
+                if digest_fh:
+                    digest_fh.close()
 
                 out_name = os.path.join(out_dir, "protocol_%04d_injectdigest.csv" % (injected_count,))
                 print("Creating inject digest for", out_name)
                 file_list.append(out_name)
                 injected_count += 1
-                out_fh = open(out_name, "w")
-                out_fh.write(arm.strip() + " " + arm_time + '\n')
-                out_fh.write(",".join(["index"] + InjectDigestCommand.header))
-                out_fh.write("\n")
+                inject_digest_fh = open(out_name, "w")
+                inject_digest_fh.write(arm.strip() + " " + arm_time + '\n')
+                inject_digest_fh.write(",".join(["index"] + InjectDigestCommand.header))
+                inject_digest_fh.write("\n")
+
+                digest_name = os.path.join(out_dir, "protocol_%04d_digest.csv" % (injected_count,))
+                digest_fh = open(digest_name, "w")
+                digest_fh.write(arm.strip() + " " + arm_time + '\n')
+                digest_fh.write(",".join(["time", "inject_index"] + DigestCommand.header))
+                inject_complete_state = ""
+
             elif found and "RX: [INJECTDIGEST]" in line:
                 index += 1
                 if "SAME_AS_PREV" not in line:
                     line = line.strip()
                     arr = line.split("[")
                     line = arr[3].split("]")[0]
-                    out_fh.write(str(index) + "," + line + "\n")
-    if out_fh:
-        out_fh.close()
+                    inject_digest_fh.write(str(index) + "," + line + "\n")
+            elif index > 0 and "RX: [DIGEST]" in line:
+                # print("Found digest in", filename, "at", line)
+                if "SAME_AS_PREV" not in line:
+                    line = line.strip()
+                    time_str = line.split(" ")[0]
+                    arr = line.split("[")
+                    line = arr[3].split("]")[0]
+                    digest_fh.write(time_str + "," + str(index) + "," + line + "\n")
+
+                    # attempt to detect of injection status
+                    # "0724-07:09:51.144 INFO : RX: [DIGEST][][0,IDLE,COMPLETED_NORMAL,..."
+                    arr = line.split(",")
+                    if inject_complete_state == "" and len(arr) >= 3 and arr[1] == "IDLE":
+                        print("End of injection detected at", time_str, "in", filename)
+                        inject_complete_state = arr[2]
+                        print("Inject complete state:", inject_complete_state)
+                        info_line = ",".join([arm_time, time_str, str(injected_count), inject_complete_state, arm]) + "\n"
+                        summary_fh.write(info_line)
+                        print(info_line)
+
+
+    if inject_digest_fh:
+        inject_digest_fh.close()
+    if summary_fh:
+        summary_fh.close()
+    if digest_fh:
+        digest_fh.close()
+    if all_commands_fh:
+        all_commands_fh.close()
     return file_list
 
 
