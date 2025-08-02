@@ -112,7 +112,10 @@ def extract_mcu_file(path, to_directory='.'):
             else:
                 name_list = []
             for member_name in name_list:
-                if "DS_Mcu-Link" in member_name:
+                if "QML_DebugTool" in member_name:
+                    file.extract(member_name, to_directory)
+                    print("Extracting", member_name)
+                elif "DS_Mcu-Link" in member_name:
                     print("Extracting", member_name)
                     file.extract(member_name, to_directory)
                     # DS_Mcu-Link.old3.log
@@ -300,7 +303,12 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         file_list = [os.path.basename(name)]
         digest_name = "_".join(name.split("_")[:-1] + ["digest.csv"])
         if os.path.exists(digest_name):
-            digest_df = pd.read_csv(digest_name, skiprows=1)
+            try:
+                digest_df = pd.read_csv(digest_name, skiprows=1)
+            except Exception as e:
+                digest_df = pd.DataFrame()
+                print("Failed to read digest file", digest_name, "due to", e)
+
             if len(digest_df):
                 file_list.append(os.path.basename(digest_name))
                 first_row = digest_df.iloc[0]
