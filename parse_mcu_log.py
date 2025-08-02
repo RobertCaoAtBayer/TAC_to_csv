@@ -19,7 +19,7 @@ class DigestsData:
     def __init__(self):
         self.data = []
 
-    def from_mcu_log(self, log_filename):
+    def from_mcu_log(self, log_filename, verbose=False):
         with open(log_filename, 'r') as file:
             for line in file:
                 if "RX: [DIGEST][][" in line:
@@ -38,7 +38,8 @@ class DigestsData:
                         alarms_str = ""
                     digest_data.append(alarms_str)
 
-                    print(digest_time,  digest_data)
+                    if verbose:
+                        print(digest_time,  digest_data)
 
                     if len(parts) > 1:
                         self.data.append([digest_time] +  digest_data)
@@ -62,8 +63,7 @@ def extract_digests(log_filename):
 def get_sru_log_file_list(prefix):
     return [prefix + "." + ext for ext in ['old3.log', 'old2.log', 'old1.log', 'log']]
 
-
-def parse_SRU_bottle_data(dir_name):
+def parse_sru_bottle_data(dir_name):
     file_lists = get_sru_log_file_list("DS_Device-Bottle")
     data = []
     year_str = '2021'  # todo
@@ -134,6 +134,7 @@ def extract_mcu_file(path, to_directory='.'):
             file.close()
     finally:
         pass
+
     names = [x[1] for x in sorted(names, reverse=True)]   # sort by index in reverse order (olddest first) then return the names only
     return names
 
@@ -145,6 +146,8 @@ def extract_all_injections(filename, out_dir, injected_count=0):
     digest_fh = None
     file_list = list()
     inject_complete_state = ""
+    digest_name = ""
+    inject_digest_name = ""
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
@@ -158,7 +161,7 @@ def extract_all_injections(filename, out_dir, injected_count=0):
 
     with open(filename) as fh:
         for line in fh:
-            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line:
+            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line:
                 all_commands_fh.write(line.strip() + "\n")
 
             if "TX: >ARM" in line:
@@ -174,11 +177,10 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                 if digest_fh:
                     digest_fh.close()
 
-                out_name = os.path.join(out_dir, "protocol_%04d_injectdigest.csv" % (injected_count,))
-                print("Creating inject digest for", out_name)
-                file_list.append(out_name)
-                injected_count += 1
-                inject_digest_fh = open(out_name, "w")
+                inject_digest_name = os.path.join(out_dir, "protocol_%04d_injectdigest.csv" % (injected_count,))
+                print("Creating inject digest for", inject_digest_name)
+                file_list.append(inject_digest_name)
+                inject_digest_fh = open(inject_digest_name, "w")
                 inject_digest_fh.write(arm.strip() + " " + arm_time + '\n')
                 inject_digest_fh.write(",".join(["index"] + InjectDigestCommand.header))
                 inject_digest_fh.write("\n")
@@ -188,6 +190,8 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                 digest_fh.write(arm.strip() + " " + arm_time + '\n')
                 digest_fh.write(",".join(["time", "inject_index"] + DigestCommand.header))
                 inject_complete_state = ""
+
+                injected_count += 1
 
             elif found and "RX: [INJECTDIGEST]" in line:
                 index += 1
@@ -199,9 +203,9 @@ def extract_all_injections(filename, out_dir, injected_count=0):
             elif index > 0 and "RX: [DIGEST]" in line:
                 # print("Found digest in", filename, "at", line)
                 if "SAME_AS_PREV" not in line:
-                    line = line.strip()
-                    time_str = line.split(" ")[0]
-                    arr = line.split("[")
+                    digest_line = line.strip()
+                    time_str = digest_line.split(" ")[0]
+                    arr = digest_line.split("[")
                     line = arr[3].split("]")[0]
                     digest_fh.write(time_str + "," + str(index) + "," + line + "\n")
 
@@ -214,8 +218,10 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                         print("Inject complete state:", inject_complete_state)
                         info_line = ",".join([arm_time, time_str, str(injected_count), inject_complete_state, arm]) + "\n"
                         summary_fh.write(info_line)
-                        print(info_line)
 
+                        all_commands_fh.write(digest_line + "\n")
+                        all_commands_fh.write(arm_time + " " + inject_digest_name + "\n")
+                        all_commands_fh.write(arm_time + " " + digest_name + "\n")
 
     if inject_digest_fh:
         inject_digest_fh.close()
