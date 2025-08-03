@@ -23,8 +23,8 @@ def hcu_utc_time_to_tz_datetime(val: str, tz_name='Australia/Sydney') -> datetim
         us_time = hcu_utc_time_to_tz_datetime(utc_string, tz_name="America/Indiana/Indianapolis")
         sydney_time = hcu_utc_time_to_tz_datetime(utc_string, tz_name='Australia/Sydney')
     """
-    year_prefix_str = str(datetime.now().year)
-    val = year_prefix_str + val
+    # year_prefix_str = str(datetime.now().year)
+    # val = year_prefix_str + val
     from_zone = tz.gettz('UTC')
     print("from_zone", from_zone, "val", val)
     utc = datetime.strptime(val, "%Y%m%d-%H:%M:%S.%f").replace(tzinfo=from_zone)
@@ -125,11 +125,6 @@ class InjectDigestData:
         self._phase_time = None
         self._phase_durations = []
 
-        # get the file created year
-        creation_time = os.path.getctime(filename)
-        year_prefix_str = str(datetime.fromtimestamp(creation_time).year)
-
-
         with open(filename) as fh:
             # from the HCU log the file contains ARM as the first line
             # the 2nd line is the header
@@ -160,7 +155,7 @@ class InjectDigestData:
                 arr = [float(x) for x in idc.parse_response(",".join(arr_str[2:]), verbose=verbose)]
                 headers = headers[2:]  # strip out the index
                 start_time_str = arr_str[0]
-                start_time = pd.to_datetime(year_prefix_str + arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
+                start_time = pd.to_datetime(arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
                 arr = arr  + [start_time]  # starting with 0 delta time
                 headers += ["datetime"]  # add the delta time column
             except:
@@ -178,7 +173,7 @@ class InjectDigestData:
                 try:
                     # strip out the time and index because parse response doesn't handle index
                     arr = [float(x) for x in idc.parse_response(",".join(arr_str[2:]), verbose=verbose)]
-                    id_time = pd.to_datetime(year_prefix_str + arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
+                    id_time = pd.to_datetime(arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
                     arr = arr + [id_time]
                 except:
                     arr = None
@@ -187,21 +182,25 @@ class InjectDigestData:
                     data.append(arr)
 
         self.headers = headers
+        if len(data) <= 1:   # if there is only 1 data point, it is not useful
+            print("No data in", filename)
+            self.data = np.array([])
+            self._df = None
+            return 0
         if verbose:
             print("data before", len(data))
             print(data[0])
         self.data = np.array(data)
 
-        if verbose:
+        if verbose or 1:
             print("data shape", self.data.shape, "header shape", len(self.headers))
             print(self.headers)
 
         if self.data.shape[1] > 0:  # can have an empty 2D array which has a length greater than 1
-
             # this is to use with Ethan's pressure gauge ADC to PSI conversion
             # df["ActualPressure"] = 515 * df['FLCAL'] / 4095.0 - 15
             # noinspection PyTypeChecker
-            # current colume 27 is air count
+            # current column 27 is air counts
             self.data[:, 27] = self.data[:, 27] * 515 / 4095.0 - 15  # pin_120
 
             # kPA to psi
@@ -210,6 +209,9 @@ class InjectDigestData:
 
             self._df = pd.DataFrame({name: self.data[:, i] for i, name in enumerate(self.headers)})
             self._df["Time(s)"] = self.get_phase_time()
+
+            output_file_name = os.path.splitext(filename)[0] + "_post.csv"
+            self._df.to_csv(output_file_name, index=False)
 
             # it is done above
             # pin_120 is FLCAL port ADC via injectdigest data

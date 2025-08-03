@@ -12,6 +12,7 @@ from mcu_gui import show_result
 import shutil
 import pandas as pd
 import os.path
+from datetime import datetime
 
 
 class DigestsData:
@@ -162,9 +163,13 @@ def extract_all_injections(filename, out_dir, injected_count=0):
     summary_fh.write("Extracting injections from %s\n" % filename)
     summary_fh.write("Output directory: %s\n" % out_dir)
 
+    creation_time = os.path.getctime(filename)
+    year_prefix_str = str(datetime.fromtimestamp(creation_time).year)
+
     with open(filename) as fh:
         for line in fh:
             time_str = line.split(" ")[0]
+            time_str = year_prefix_str + time_str
             if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line:
                 all_commands_fh.write(line.strip() + "\n")
 
