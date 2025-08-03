@@ -164,14 +164,14 @@ def extract_all_injections(filename, out_dir, injected_count=0):
 
     with open(filename) as fh:
         for line in fh:
+            time_str = line.split(" ")[0]
             if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line:
                 all_commands_fh.write(line.strip() + "\n")
 
             if "TX: >ARM" in line:
-                arm_line = line.strip()
                 # "0906-04:39:23.829 INFO : TX: >ARM@2068,1,SALINE,40,75,SALINE,0,100.0,10.0,0\"
                 arm = line.split(":")[-1].strip()[:-1]
-                arm_time = line.split(" ")[0]
+                arm_time = time_str
                 print("At", arm_time,  arm)
                 found = True
                 index = 0
@@ -185,7 +185,7 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                 file_list.append(inject_digest_name)
                 inject_digest_fh = open(inject_digest_name, "w")
                 inject_digest_fh.write(arm.strip() + " " + arm_time + '\n')
-                inject_digest_fh.write(",".join(["index"] + InjectDigestCommand.header))
+                inject_digest_fh.write(",".join(["time", "index"] + InjectDigestCommand.header))
                 inject_digest_fh.write("\n")
 
                 digest_name = os.path.join(out_dir, "protocol_%04d_digest.csv" % (injected_count,))
@@ -202,12 +202,11 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                     line = line.strip()
                     arr = line.split("[")
                     line = arr[3].split("]")[0]
-                    inject_digest_fh.write(str(index) + "," + line + "\n")
+                    inject_digest_fh.write(time_str + "," + str(index) + "," + line + "\n")
             elif index > 0 and "RX: [DIGEST]" in line:
                 # print("Found digest in", filename, "at", line)
                 if "SAME_AS_PREV" not in line:
                     digest_line = line.strip()
-                    time_str = digest_line.split(" ")[0]
                     arr = digest_line.split("[")
                     line = arr[3].split("]")[0]
                     digest_fh.write(time_str + "," + str(index) + "," + line + "\n")

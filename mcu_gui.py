@@ -125,6 +125,11 @@ class InjectDigestData:
         self._phase_time = None
         self._phase_durations = []
 
+        # get the file created year
+        creation_time = os.path.getctime(filename)
+        year_prefix_str = str(datetime.fromtimestamp(creation_time).year)
+
+
         with open(filename) as fh:
             # from the HCU log the file contains ARM as the first line
             # the 2nd line is the header
@@ -136,7 +141,7 @@ class InjectDigestData:
                 self.protocol_extra = "\\".join(arr[1:])
                 self.protocol = Protocol.from_string(protocol)
                 line = fh.readline()
-            # else the first line contain the header
+            # else the first line contains the header
             headers = line.split(",")
             headers[-1] = headers[-1].strip()
             # for i, field in enumerate(headers):
@@ -148,21 +153,20 @@ class InjectDigestData:
             line = fh.readline()
             arr_str = line.split(",")
             # noinspection PyBroadException
+            # noinspection PyBroadException
             try:
-                arr = [float(x) for x in arr_str]
-                use_idc = False
+                # strip the index out
+                # idx = float(arr_str[0])
+                arr = [float(x) for x in idc.parse_response(",".join(arr_str[2:]), verbose=verbose)]
+                headers = headers[2:]  # strip out the index
+                start_time_str = arr_str[0]
+                start_time = pd.to_datetime(year_prefix_str + arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
+                arr = arr  + [start_time]  # starting with 0 delta time
+                headers += ["datetime"]  # add the delta time column
             except:
-                # noinspection PyBroadException
-                try:
-                    # strip the index out
-                    # idx = float(arr_str[0])
-                    arr = [float(x) for x in idc.parse_response(",".join(arr_str[1:]), verbose=verbose)]
-                    use_idc = True
-                    headers = headers[1:]  # strip out the index
-                except:
-                    print("LINE:", arr_str)
-                    print("ERROR invalid inject digest data format in ", filename)
-                    return False
+                print("LINE:", arr_str)
+                print("ERROR invalid inject digest data format in ", filename)
+                return False
             data.append(arr)
 
             while 1:
@@ -172,12 +176,10 @@ class InjectDigestData:
                 arr_str = line.split(",")
                 # noinspection PyBroadException
                 try:
-                    if use_idc:
-                        # idx = float(arr_str[0])
-                        # strip out the index because parse response doesn't have index
-                        arr = [float(x) for x in idc.parse_response(",".join(arr_str[1:]), verbose=verbose)]
-                    else:
-                        arr = [float(x) for x in arr_str]
+                    # strip out the time and index because parse response doesn't handle index
+                    arr = [float(x) for x in idc.parse_response(",".join(arr_str[2:]), verbose=verbose)]
+                    id_time = pd.to_datetime(year_prefix_str + arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
+                    arr = arr + [id_time]
                 except:
                     arr = None
                     pass  # skip error
@@ -194,7 +196,7 @@ class InjectDigestData:
             print("data shape", self.data.shape, "header shape", len(self.headers))
             print(self.headers)
 
-        if self.data.shape[1] > 0:  # can have an empty 2D array which have a length of 1
+        if self.data.shape[1] > 0:  # can have an empty 2D array which has a length greater than 1
 
             # this is to use with Ethan's pressure gauge ADC to PSI conversion
             # df["ActualPressure"] = 515 * df['FLCAL'] / 4095.0 - 15
@@ -418,11 +420,11 @@ class InjectDigestData:
     # noinspection PyAugmentAssignment
     def get_phase_time(self):
         """
-        :return: array of absolute time step in second unit
+        :return: array of absolute time steps in second unit
         """
         if self._phase_time is None:
             # noinspection PyTypeChecker
-            x: np.ndarray = self.data[:, -1]  # phase time
+            x: np.ndarray = self.data[:, -2]  # phase time, last column is time timestamp
             x = x / 1000.0  # convert milliseconds to seconds
             phase_ids = np.sort(np.unique(self.data[:, 0]))
             t = 0
