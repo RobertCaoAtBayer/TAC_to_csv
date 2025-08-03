@@ -605,6 +605,8 @@ class InjectDigestData:
         ]
 
         for s in all_figures:
+            if not s.legend:
+                continue
             s.legend.location = "top_left"
             s.legend.click_policy = "hide"
             s.legend.orientation = "horizontal"
