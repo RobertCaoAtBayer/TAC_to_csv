@@ -113,7 +113,10 @@ def extract_mcu_file(path, to_directory='.'):
             else:
                 name_list = []
             for member_name in name_list:
-                if "QML_DebugTool" in member_name:
+                if "Mcu." in member_name:
+                    file.extract(member_name, to_directory)
+                    print("Extracting", member_name)
+                elif "QML_DebugTool" in member_name:
                     file.extract(member_name, to_directory)
                     print("Extracting", member_name)
                 elif "DS_Mcu-Link" in member_name:
@@ -166,14 +169,17 @@ def extract_all_injections(filename, out_dir, injected_count=0):
     creation_time = os.path.getctime(filename)
     year_prefix_str = str(datetime.fromtimestamp(creation_time).year)
 
+    oadi_str = ""
+
     with open(filename) as fh:
         for line in fh:
             time_str = line.split(" ")[0]
             time_str = year_prefix_str + time_str
-            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line:
+            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line and "T_BMSDIGESTFAILED_Read" not in line:
                 all_commands_fh.write(line.strip() + "\n")
 
             if "TX: >ARM" in line:
+                oadi_str = ""
                 # "0906-04:39:23.829 INFO : TX: >ARM@2068,1,SALINE,40,75,SALINE,0,100.0,10.0,0\"
                 arm = line.split(":")[-1].strip()[:-1]
                 arm_time = time_str
@@ -214,6 +220,13 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                     digest_line = line.strip()
                     arr = digest_line.split("[")
                     line = arr[3].split("]")[0]
+                    if "OADI:" in line:
+                        oadi_str = line[line.find("OADI:"):]
+                        oadi_str = oadi_str.split("]")[0]
+                        oadi_str = oadi_str.split(",")[0]
+                        oadi_str = oadi_str.split(" ")[0]
+                        oadi_str = ",".join(oadi_str.split(":"))  # forget the rest
+
                     digest_fh.write(time_str + "," + str(index) + "," + line + "\n")
 
                     # attempt to detect of injection status
@@ -227,12 +240,14 @@ def extract_all_injections(filename, out_dir, injected_count=0):
                             arm_time,
                             time_str,
                             str(injected_count),
+                            oadi_str,
                             os.path.basename(inject_digest_name),
                             os.path.basename(digest_name),
                             inject_complete_state,
                             arm
                         ]) + "\n"
                         summary_fh.write(info_line)
+                        oadi_str = ""
 
                         all_commands_fh.write(digest_line + "\n")
                         all_commands_fh.write(arm_time + " " + inject_digest_name + "\n")
