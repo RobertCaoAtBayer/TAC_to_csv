@@ -346,12 +346,15 @@ def generate_output_from_df_for_serial(injector_serial: str, all_df: pd.DataFram
     if "NextAlertGuid" in all_df.columns:
         all_df.drop(columns=['NextAlertGuid'], inplace=True)
     print("All data", all_df.columns, all_df.shape)
-    all_df["ActiveAt"] = pd.to_datetime(all_df["ActiveAt"], utc=True)
-    all_df["InactiveAt"] = pd.to_datetime(all_df["InactiveAt"], utc=True)
+    all_df["ActiveAt"] = pd.to_datetime(all_df["ActiveAt"], utc=True, format='mixed')
+    all_df["InactiveAt"] = pd.to_datetime(all_df["InactiveAt"], utc=True, format='mixed')
+    for key in ['GUID', 'CodeName', 'Data', 'Status', 'Severity', 'Lifecycle', 'SN']:
+        all_df[key] = all_df[key].astype(str)
     serial_dir = os.path.join(output_dir, "Serial")
     if not os.path.exists(serial_dir):
         os.mkdir(serial_dir)
     all_df.to_csv(os.path.join(serial_dir, injector_serial + ".csv"), index=False)
+    all_df.reset_index(inplace=True)
     all_df.to_feather(os.path.join(serial_dir, injector_serial + ".feather"))
     print("Created", os.path.join(serial_dir, injector_serial + ".csv"))
     print("Created", os.path.join(serial_dir, injector_serial + ".feather"))

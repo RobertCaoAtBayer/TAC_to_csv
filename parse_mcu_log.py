@@ -175,7 +175,7 @@ def extract_all_injections(filename, out_dir, injected_count=0):
         for line in fh:
             time_str = line.split(" ")[0]
             time_str = year_prefix_str + time_str
-            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line and "T_BMSDIGESTFAILED_Read" not in line:
+            if " : RX: [" in line and "RX: [INJECTDIGEST]" not in line and "RX: [DIGEST]" not in line and "RX: [LEDS]" not in line and "T_BMSDIGESTFAILED_Read" not in line and "RX: [CLEARALARMS]" not in line:
                 all_commands_fh.write(line.strip() + "\n")
 
             if "TX: >ARM" in line:
