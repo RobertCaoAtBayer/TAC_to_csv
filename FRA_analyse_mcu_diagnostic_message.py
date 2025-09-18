@@ -64,7 +64,12 @@ def split_mcu_diagnostics(df: pd.DataFrame, output_dir: str) -> list[str]:
                 if name not in all_data:
                     all_data[name] = []
                 time_str = ":".join(fields[:3])
-                date_start = str(df_row.ActiveAt).split(" ")[0].strip() + " " + time_str
+                date_arr = str(df_row.ActiveAt).split(" ")
+                # it is known mcu bug might report a wrapped time in ms so it might be different from the ActiveAt time
+                if len(date_arr) > 1 and date_arr[1][:5] == time_str[:5]:   # use the time from the alert if it matches the hour and minute
+                    date_start = date_arr[0].strip() + " " + time_str
+                else:
+                    date_start = str(df_row.ActiveAt)
                 row = [date_start, sn, ":".join(fields[4:])]
                 all_data[name].append(row)
 

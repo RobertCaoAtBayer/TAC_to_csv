@@ -87,7 +87,8 @@ def get_serial_number_from_data_frame(df: pd.DataFrame) -> str:
 
     if serial == "unknown":
         info = get_serials_from_system_identification_information(df)
-        serial = info["SRUSerial"]
+        if "SRUSerial" in info:
+            serial = info["SRUSerial"]
 
     if serial.startswith("SN"):
         return serial
