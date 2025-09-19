@@ -11,7 +11,7 @@ from parse_mcu_log import process_mcu_log_or_zip
 
 
 class TacConversionToolApp:
-    base_title = "TAC Conversion Tool V1.2"
+    base_title = "TAC Conversion Tool V1.3"
 
     def __init__(self):
         self.root = tkinter.Tk()
