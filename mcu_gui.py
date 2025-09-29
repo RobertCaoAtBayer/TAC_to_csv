@@ -416,7 +416,9 @@ class InjectDigestData:
         return a list of 3 volumes s0, c1, c2
         """
         # the saline,c1, c2 volumes, phase time are the last columns
-        cols = self.data[self.data[:, 0] == phase, -4:-1]
+        # cols = self.data[self.data[:, 0] == phase, -4:-1]   # does not work, but worked in the past [:, -5:-2] work
+        phase_data = self.data[self.data[:,0] == phase]
+        cols = phase_data[:, -5:-2]
         return cols[-1, :]  # and the last row
 
     # noinspection PyAugmentAssignment
