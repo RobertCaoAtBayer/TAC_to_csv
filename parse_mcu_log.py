@@ -298,7 +298,7 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         if os.path.exists(combine_log_name):
             file_list = file_list + extract_all_injections(combine_log_name, output_dir, len(file_list) + 1)
             extract_digests(combine_log_name)
-        sdet_df = parse_mcu_sdet(log_filename, output_dir)
+        sdet_df = parse_mcu_sdet(log_filename, output_dir)  # log_filename is a directory
         plot_sdet_data(sdet_df, output_dir=output_dir, x_field="date")
         match_sdet_to_injections_at_directory(sdet_df, output_dir)
     elif log_filename.endswith(".log"):
