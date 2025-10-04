@@ -119,6 +119,9 @@ def extract_mcu_file(path, to_directory='.'):
                 elif "QML_DebugTool" in member_name:
                     file.extract(member_name, to_directory)
                     print("Extracting", member_name)
+                elif "lastBacktrace.log" in member_name:
+                    file.extract(member_name, to_directory)
+                    print("Extracting", member_name)
                 elif "DS_Mcu-Link" in member_name:
                     print("Extracting", member_name)
                     file.extract(member_name, to_directory)
