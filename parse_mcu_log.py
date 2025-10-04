@@ -13,7 +13,7 @@ import shutil
 import pandas as pd
 import os.path
 from datetime import datetime
-
+from parse_mcu_sdet import parse_mcu_sdet, plot_sdet_data, match_sdet_to_injections_at_directory
 
 class DigestsData:
 
@@ -297,8 +297,14 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         combine_log_name = combine_mcu_link_log(log_list)
         if os.path.exists(combine_log_name):
             file_list = file_list + extract_all_injections(combine_log_name, output_dir, len(file_list) + 1)
+            extract_digests(combine_log_name)
+        sdet_df = parse_mcu_sdet(log_filename, output_dir)
+        plot_sdet_data(sdet_df, output_dir=output_dir, x_field="date")
+        match_sdet_to_injections_at_directory(sdet_df, output_dir)
     elif log_filename.endswith(".log"):
         file_list += extract_all_injections(log_filename, output_dir, len(file_list) + 1)
+        extract_digests(log_filename)
+        # assume no sdet data in single log file
     else:
         if log_filename.endswith('.tar.gz'):
             basename = os.path.basename(log_filename)
@@ -311,6 +317,11 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         if os.path.exists(combine_log_name):
             file_list = file_list + extract_all_injections(combine_log_name, output_dir, len(file_list) + 1)
             extract_digests(combine_log_name)
+        sdet_df = parse_mcu_sdet(os.path.dirname(combine_log_name), output_dir)
+        plot_sdet_data(sdet_df, output_dir=output_dir, x_field="date")
+        match_sdet_to_injections_at_directory(sdet_df, output_dir)
+
+    # parse SDET data if any
 
     # plotting
     # copy index.html for viewing the output
