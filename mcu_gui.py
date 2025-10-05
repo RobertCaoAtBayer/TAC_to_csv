@@ -6,7 +6,7 @@ import numpy as np
 from bokeh.io import output_file, show, save
 from bokeh.layouts import column
 from bokeh.plotting import figure
-from bokeh.models import BoxAnnotation, Span
+from bokeh.models import BoxAnnotation, Span, LinearAxis, Range1d, SingleIntervalTicker
 from bokeh.palettes import Paired12 as MyColors
 import pandas as pd
 from bokeh.models import ColumnDataSource
@@ -35,7 +35,6 @@ def hcu_utc_time_to_tz_datetime(val: str, tz_name='Australia/Sydney') -> datetim
 
 def hcu_time_str_to_pittsburgh_tz_str(utc_string: str) -> str:
     return hcu_utc_time_to_tz_datetime(utc_string, tz_name="America/Indiana/Indianapolis").strftime("%Y-%m-%d %H:%M:%S")
-
 
 def hcu_time_str_to_sydney_tz_str(utc_string: str) -> str:
     return hcu_utc_time_to_tz_datetime(utc_string, tz_name='Australia/Sydney').strftime("%Y-%m-%d %H:%M:%S")
@@ -389,17 +388,27 @@ class InjectDigestData:
                 s1.oval(nz_time, speed, line_width=line_width, color=color, legend_label=motor_name)
         return s1
 
-    def _create_sdet_figure(self, sdet_inject_data_df: pd.DataFrame, width, height, title: str="SDET", line_width=2, y_axis_label="SUDS ADC(count)"):
+    @staticmethod
+    def _create_sdet_figure(sdet_inject_data_df: pd.DataFrame, width, height, title: str="SDET", line_width=2, y_axis_label="SUDS ADC(count)"):
         s1 = figure(width=width, height=height, title=title, y_axis_label=y_axis_label, sizing_mode="stretch_width")
         # add bands to the y-grid
         s1.ygrid.band_fill_color = "olive"
         s1.ygrid.band_fill_alpha = 0.1
         s1.xgrid.bounds = (50, 100)  # define vertical bonds
+        x = sdet_inject_data_df["T(s)"]
         for i, field in enumerate(["Inlet_SUDS", "IR_K"]):
-            x = sdet_inject_data_df["T(s)"]
             y = sdet_inject_data_df[field]
             s1.line(x, y, line_width=line_width, color=MyColors[i], legend_label=field)
-            s1.scatter(x, y, fill_color="white", size=8)
+            s1.scatter(x, y, fill_color="white", size=8, marker="+", color='orange')
+
+        # Add the second y-axis to plot the digital signal
+        s1.extra_y_ranges = {"y2": Range1d(start=0, end=1)}
+        axis = LinearAxis(y_range_name="y2", axis_label='Digital')
+        axis.ticker = SingleIntervalTicker(interval=1, num_minor_ticks=1)
+        s1.add_layout(axis, 'right')
+        digital = sdet_inject_data_df["digital"]
+        mode = "after"
+        s1.step(x, digital, line_width=line_width, color='brown', legend_label="Digital", y_range_name="y2", mode=mode)
         return s1
 
     def _create_figure(self, width, height, title, x, ys, style='step', line_width=2, y_axis_label=None):
@@ -629,8 +638,11 @@ class InjectDigestData:
         ]
 
         if len(sdet_inject_data_df):
-            fig = self._create_sdet_figure(sdet_inject_data_df, width, height, "SUDS(SDET) data", line_width=2)
-            all_figures = [fig] + all_figures
+            sdec_fig = self._create_sdet_figure(sdet_inject_data_df, width, height, "SUDS(SDET) data", line_width=2)
+            x_range = all_figures[0].x_range
+            all_figures = [sdec_fig] + all_figures
+            for fig in all_figures:
+                fig.x_range = x_range
 
         for s in all_figures:
             if not s.legend:
