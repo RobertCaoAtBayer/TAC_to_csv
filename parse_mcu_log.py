@@ -13,7 +13,7 @@ import shutil
 import pandas as pd
 import os.path
 from datetime import datetime
-from parse_mcu_sdet import parse_mcu_sdet, plot_sdet_data, match_sdet_to_injections_at_directory
+from parse_mcu_sdet import parse_mcu_sdet, plot_sdet_data, match_sdet_to_injections_at_directory, extract_sdet_data_between_times
 
 class DigestsData:
 
@@ -292,6 +292,7 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     file_list = []
+    sdet_df = None
     if os.path.isdir(log_filename):
         log_list = get_sru_log_file_list(os.path.join(log_filename, "DS_Mcu-Link"))
         combine_log_name = combine_mcu_link_log(log_list)
@@ -336,8 +337,17 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         file_list = [os.path.basename(name)]
         digest_name = "_".join(name.split("_")[:-1] + ["digest.csv"])
         if os.path.exists(digest_name):
+            sdet_inject_data_df = pd.DataFrame()
             try:
                 digest_df = pd.read_csv(digest_name, skiprows=1)
+                digest_df["time"] = pd.to_datetime(digest_df["time"], utc=True, format='mixed')
+                digest_df["injector_state"] = digest_df["injector_state"].astype("category")
+
+                # only keep rows where injector_state is not IDLE as injecting
+                digest_df = digest_df[digest_df["injector_state"] != "IDLE"]
+                start_time = digest_df["time"].min()
+                end_time = digest_df["time"].max()
+                sdet_inject_data_df = extract_sdet_data_between_times(sdet_df, start_time, end_time)
             except Exception as e:
                 digest_df = pd.DataFrame()
                 print("Failed to read digest file", digest_name, "due to", e)
@@ -356,6 +366,7 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
                 start_volumes=start_vols,
                 end_volumes=end_vols,
                 filename_list=file_list,
+                sdet_inject_data_df=sdet_inject_data_df
             )
         else:
             show_result(csv_filename=name, filename_list=file_list, new_oad=new_oad, )

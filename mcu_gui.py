@@ -389,6 +389,19 @@ class InjectDigestData:
                 s1.oval(nz_time, speed, line_width=line_width, color=color, legend_label=motor_name)
         return s1
 
+    def _create_sdet_figure(self, sdet_inject_data_df: pd.DataFrame, width, height, title: str="SDET", line_width=2, y_axis_label="SDET ADC", style='step'):
+        s1 = figure(width=width, height=height, title=title, y_axis_label=y_axis_label, sizing_mode="stretch_width")
+        # add bands to the y-grid
+        s1.ygrid.band_fill_color = "olive"
+        s1.ygrid.band_fill_alpha = 0.1
+        s1.xgrid.bounds = (50, 100)  # define vertical bonds
+        for i, field in enumerate(["Inlet_SUDS", "IR_K"]):
+            x = sdet_inject_data_df["T(s)"]
+            y = sdet_inject_data_df[field]
+            s1.line(x, y, line_width=line_width, color=MyColors[i], legend_label=field)
+            s1.scatter(x, y, fill_color="white", size=8)
+        return s1
+
     def _create_figure(self, width, height, title, x, ys, style='step', line_width=2, y_axis_label=None):
         s1 = figure(width=width, height=height, title=title, y_axis_label=y_axis_label,
                     sizing_mode="stretch_width"
@@ -576,6 +589,11 @@ class InjectDigestData:
         width = 1200
         height = 300
 
+        if 'sdet_inject_data_df' in kargs:
+            sdet_inject_data_df = kargs['sdet_inject_data_df']
+        else:
+            sdet_inject_data_df = pd.DataFrame()
+
         # print("phase time", self.get_phase_time())
         x = self.get_phase_time()
         # phase time is still not quite right - it is the timer from
@@ -609,6 +627,10 @@ class InjectDigestData:
             self._create_figure(width, height // 2, "Pin 120-122 ADC", x, range(27, 29)),
             self._create_figure(width, height // 2, "3mm Port", x, range(30, 31)),
         ]
+
+        if len(sdet_inject_data_df):
+            fig = self._create_sdet_figure(sdet_inject_data_df, width, height, "SDET Data", line_width=2)
+            all_figures = [fig] + all_figures
 
         for s in all_figures:
             if not s.legend:
@@ -761,6 +783,7 @@ def show_result(**kwargs):
     dd = InjectDigestData()
     dd.load_file(inject_digest_csv_filename, verbose=False)
     protocol = dd.protocol
+
 
     is_showing = 'is_show' in kwargs and kwargs['is_show']
     if dd.get_df() is not None:  # if data frame is available

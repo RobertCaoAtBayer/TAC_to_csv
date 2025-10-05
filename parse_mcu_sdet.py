@@ -117,20 +117,32 @@ def plot_sdet_data(df: pd.DataFrame, show: bool = False, output_dir: str = ".", 
         plt.clf()
         plt.close()
 
+def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timestamp, end_time: pd.Timestamp) -> pd.DataFrame:
+    delta = pd.to_timedelta(0, unit='s')
+    temp_df = pd.DataFrame(sdet_df[sdet_df["date"].between(start_time - delta, end_time + delta)])
+
+    # "T(s)" offset to start of the injection
+    min_time = temp_df["date"].min()
+    offset = (min_time - start_time).total_seconds()
+    temp_df["T(s)"] = temp_df["T(s)"] + offset - temp_df["T(s)"].min()
+
+    return temp_df
+
+
 def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: str):
     sdet_df["date"] = pd.to_datetime(sdet_df["date"], utc=True, format='mixed')
     for filename in glob.glob(injection_dir + '/protocol_*_digest.csv'):
         # print("Matching SDET to", filename)
-        injection_df = pd.read_csv(filename, skiprows=1)  # skip first row
-        injection_df.reset_index(drop=True, inplace=True)
+        digest_df = pd.read_csv(filename, skiprows=1)  # skip first row
+        digest_df.reset_index(drop=True, inplace=True)
         # print("injection_df", injection_df.columns)
-        injection_df["time"] = pd.to_datetime(injection_df["time"], utc=True, format='mixed')
-        injection_df["injector_state"] = injection_df["injector_state"].astype("category")
-        injection_df = injection_df[injection_df["injector_state"] != "IDLE"]
-        start_time = injection_df["time"].min()
-        end_time = injection_df["time"].max()
-        delta = pd.to_timedelta(0, unit='s')
-        temp_df = sdet_df[sdet_df["date"].between(start_time - delta, end_time + delta)]
+        digest_df["time"] = pd.to_datetime(digest_df["time"], utc=True, format='mixed')
+        digest_df["injector_state"] = digest_df["injector_state"].astype("category")
+        digest_df = digest_df[digest_df["injector_state"] != "IDLE"]
+        start_time = digest_df["time"].min()
+        end_time = digest_df["time"].max()
+        temp_df = extract_sdet_data_between_times(sdet_df, start_time, end_time)
+        x_field = "T(s)"
         if len(temp_df):
             # print("found SDET data", len(temp_df), filename)
             # print("A", start_time, "\nB", end_time)
@@ -138,7 +150,6 @@ def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: 
             fig, ax = plt.subplots(figsize=(16, 8))
             base_name = os.path.basename(filename)
             name_prefix = os.path.splitext(filename)[0] + "_SDET"
-            x_field = "T(s)"
             ax = temp_df.plot(x_field, ["Inlet_SUDS", "IR_K"], marker='.', ax=ax)
             ax.set_ylabel("Analog value")
             ax.set_title(f"Injection {base_name}: SDET data\nN={len(temp_df)} - {start_time} to {end_time}")
