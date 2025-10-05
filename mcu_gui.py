@@ -389,7 +389,7 @@ class InjectDigestData:
                 s1.oval(nz_time, speed, line_width=line_width, color=color, legend_label=motor_name)
         return s1
 
-    def _create_sdet_figure(self, sdet_inject_data_df: pd.DataFrame, width, height, title: str="SDET", line_width=2, y_axis_label="SDET ADC", style='step'):
+    def _create_sdet_figure(self, sdet_inject_data_df: pd.DataFrame, width, height, title: str="SDET", line_width=2, y_axis_label="SUDS ADC(count)"):
         s1 = figure(width=width, height=height, title=title, y_axis_label=y_axis_label, sizing_mode="stretch_width")
         # add bands to the y-grid
         s1.ygrid.band_fill_color = "olive"
@@ -629,7 +629,7 @@ class InjectDigestData:
         ]
 
         if len(sdet_inject_data_df):
-            fig = self._create_sdet_figure(sdet_inject_data_df, width, height, "SDET Data", line_width=2)
+            fig = self._create_sdet_figure(sdet_inject_data_df, width, height, "SUDS(SDET) data", line_width=2)
             all_figures = [fig] + all_figures
 
         for s in all_figures:
