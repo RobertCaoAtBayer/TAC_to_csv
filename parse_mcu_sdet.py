@@ -31,11 +31,14 @@ def combine_sdet_file_in_dir(dir_name):
     print(output_filename)
     return output_filename
 
+
 def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
-    if os.path.isfile(filename):
-        pass
-    elif os.path.isdir(filename):
+    if os.path.isdir(filename):
         filename = combine_sdet_file_in_dir(filename)
+
+    if not os.path.isfile(filename):
+        print(f"File {filename} does not exist")
+        return pd.DataFrame()
 
     has_sdet = False
     all_data = []
@@ -93,6 +96,8 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
     return combined_df
 
 def plot_sdet_data(df: pd.DataFrame, show: bool = False, output_dir: str = ".", x_field = "T(s)"):
+    if len(df) == 0:
+        return
     df["T(s)"] = df["time(ms)"] / 1000.0
     for group in df["group_id"].unique():
         fdf = df[df["group_id"] == group]
@@ -130,6 +135,8 @@ def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timest
 
 
 def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: str):
+    if len(sdet_df) == 0:
+        return
     sdet_df["date"] = pd.to_datetime(sdet_df["date"], utc=True, format='mixed')
     for filename in glob.glob(injection_dir + '/protocol_*_digest.csv'):
         # print("Matching SDET to", filename)
