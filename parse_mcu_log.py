@@ -350,6 +350,7 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
                 start_time = digest_df["time"].min()
                 end_time = digest_df["time"].max()
                 sdet_inject_data_df = extract_sdet_data_between_times(sdet_df, start_time, end_time)
+                print("here", len(sdet_inject_data_df))
             except Exception as e:
                 digest_df = pd.DataFrame()
                 print("Failed to read digest file", digest_name, "due to", e)

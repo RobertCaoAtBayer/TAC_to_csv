@@ -46,6 +46,7 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
     year_str = str(datetime.datetime.now().year)
     all_df = []
     group_id = 0
+    min_time = -1
     with open(filename) as in_file:
         for line in in_file:
             arr = line.split(" ")
@@ -53,10 +54,12 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                 if len(all_data):
                     headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
                     df = pd.DataFrame(data=all_data, columns=headers)
+                    df["time(ms)"] = df["time(ms)"] - df["time(ms)"].min()
                     df["date"] = start_time + pd.to_timedelta(df["time(ms)"], unit='ms')
                     df["group_id"] = int(group_id)
                     all_df.append(df)
                     group_id += 1
+                    min_time = -1
 
                 all_data = []
                 print(line)
@@ -72,18 +75,54 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                     # print("skip", line)
                     continue
                 row[-1] = row[-1].split("\\")[0]
+
+                # Unfortunately, the debug text data can be corrupted, so we need to check each field if it is valid
+                # Tt is not 100% sure if the data is valid!!!!
                 try:
                     row = [int(x) for x in row]
-                    all_data.append(row)
+                    if row[0] > min_time:
+                        min_time = row[0]
+                        if min_time == 628:
+                            print("min_time", min_time, line)
+                        # try to check each field
+                        if row[1] < 0 or row[1] > 255:
+                            print(f"Corrupted Inlet_SUDS {row[1]}: '{line}")
+                            continue
+                        if row[2] < 0 or row[2] > 255:
+                            print(f"Corrupted IR_K {row[1]}: '{line}")
+                            continue
+                        if row[3] < 0 or row[3] > 1:
+                            print(f"Corrupted digital {row[1]}: '{line}")
+                            continue
+                        if row[4] < 0 or row[4] > 255:
+                            print(f"Corrupted MIN {row[1]}: '{line}")
+                            continue
+                        if row[5] < 0 or row[5] > 255:
+                            print(f"Corrupted MAX {row[1]}: '{line}")
+                            continue
+                        all_data.append(row)
+                    else:
+                        print(f"Corrupted time {row[0]}: '{line.strip()}")
+                        continue
+
                 except ValueError:
                     # print("skip", line)
                     continue
     if len(all_data):
         headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
         df = pd.DataFrame(data=all_data, columns=headers)
+        offset = df["time(ms)"].min()
+        if offset:
+            print("Time offset", offset)
+            df["time(ms)"] = df["time(ms)"] - offset
+            # df.plot("time(ms)")
         df["date"] = start_time + pd.to_timedelta(df["time(ms)"], unit='ms')
         df["group_id"] = int(group_id)
         all_df.append(df)
+    if len(all_df) == 0:
+        print("No SDET logs found in {}".format(filename))
+        return pd.DataFrame()
+
     combined_df = pd.concat(all_df, ignore_index=True)
 
     if output_dir:
@@ -125,6 +164,8 @@ def plot_sdet_data(df: pd.DataFrame, show: bool = False, output_dir: str = ".", 
 def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timestamp, end_time: pd.Timestamp) -> pd.DataFrame:
     delta = pd.to_timedelta(0, unit='s')
     temp_df = pd.DataFrame(sdet_df[sdet_df["date"].between(start_time - delta, end_time + delta)])
+    if len(temp_df) == 0:
+        return temp_df
 
     # "T(s)" offset to start of the injection
     min_time = temp_df["date"].min()
@@ -139,7 +180,6 @@ def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: 
         return
     sdet_df["date"] = pd.to_datetime(sdet_df["date"], utc=True, format='mixed')
     for filename in glob.glob(injection_dir + '/protocol_*_digest.csv'):
-        # print("Matching SDET to", filename)
         digest_df = pd.read_csv(filename, skiprows=1)  # skip first row
         digest_df.reset_index(drop=True, inplace=True)
         # print("injection_df", injection_df.columns)
@@ -149,6 +189,7 @@ def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: 
         start_time = digest_df["time"].min()
         end_time = digest_df["time"].max()
         temp_df = extract_sdet_data_between_times(sdet_df, start_time, end_time)
+        print("Matching SDET to", filename, len(temp_df), start_time, end_time)
         x_field = "T(s)"
         if len(temp_df):
             # print("found SDET data", len(temp_df), filename)
@@ -188,7 +229,7 @@ def main():
         print("No SDET logs found in {}".format(args.log_filename))
         return
 
-    plot_sdet_data(df, args.show, args.output_dir)
+    plot_sdet_data(df, args.show, args.output_dir, x_field="date")
 
     match_sdet_to_injections_at_directory(df, args.output_dir)
 
