@@ -26,7 +26,6 @@ def hcu_utc_time_to_tz_datetime(val: str, tz_name='Australia/Sydney') -> datetim
     # year_prefix_str = str(datetime.now().year)
     # val = year_prefix_str + val
     from_zone = tz.gettz('UTC')
-    print("from_zone", from_zone, "val", val)
     utc = datetime.strptime(val, "%Y%m%d-%H:%M:%S.%f").replace(tzinfo=from_zone)
     to_zone = tz.gettz(tz_name)
     local_dt = utc.astimezone(to_zone)
@@ -191,7 +190,7 @@ class InjectDigestData:
             print(data[0])
         self.data = np.array(data)
 
-        if verbose or 1:
+        if verbose:
             print("data shape", self.data.shape, "header shape", len(self.headers))
             print(self.headers)
 

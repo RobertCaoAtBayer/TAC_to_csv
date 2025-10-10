@@ -46,30 +46,24 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
     year_str = str(datetime.datetime.now().year)
     all_df = []
     group_id = 0
-    min_time = -1
+    headers = "time(ms),mcu_time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
+
     with open(filename) as in_file:
         last_line = ""
-        for line in in_file:
+        for line_number, line in enumerate(in_file):
             arr = line.split(" ")
             if " HFE:SDET#" in line:
                 if len(all_data):
-                    headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
                     df = pd.DataFrame(data=all_data, columns=headers)
                     df["time(ms)"] = df["time(ms)"] - df["time(ms)"].min()
                     df["date"] = start_time + pd.to_timedelta(df["time(ms)"], unit='ms')
                     df["group_id"] = int(group_id)
                     all_df.append(df)
                     group_id += 1
-                    min_time = -1
 
                 all_data = []
                 print(line)
                 has_sdet = True
-                start_time = arr[0]
-                print("start_time", start_time)
-                # "0916-13:48:39.147"
-                start_time = pd.to_datetime(year_str + start_time, utc=True, format="mixed")
-                print("start_time", start_time)
             elif has_sdet and ',' in line:
                 row = arr[-1].split(',')
                 if len(row) != 6:
@@ -77,62 +71,46 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                     continue
                 row[-1] = row[-1].split("\\")[0]
 
+                line_time = pd.to_datetime(year_str + arr[0], utc=True, format="mixed")
+
+                if len(all_data) == 0:
+                    # get start time - this time is from HCU so it should be correct.
+                    # want to alight the time to the first sample
+                    start_time = line_time
+                    print("start_time", start_time)
                 # Unfortunately, the debug text data can be corrupted, so we need to check each field if it is valid
                 # Tt is not 100% sure if the data is valid!!!!
                 try:
                     row = [int(x) for x in row]
-                    if row[0] > min_time:
-                        min_time = row[0]
-                        if min_time == 628:
-                            print("min_time", min_time, line)
-                        # try to check each field
-                        if row[1] < 0 or row[1] > 255:
-                            print(f"Corrupted Inlet_SUDS {row[1]}: '{line}")
-                            continue
-                        if row[2] < 0 or row[2] > 255:
-                            print(f"Corrupted IR_K {row[1]}: '{line}")
-                            continue
-                        if row[3] < 0 or row[3] > 1:
-                            print(f"Corrupted digital {row[1]}: '{line}")
-                            continue
-                        if row[4] < 0 or row[4] > 255:
-                            print(f"Corrupted MIN {row[1]}: '{line}")
-                            continue
-                        if row[5] < 0 or row[5] > 255:
-                            print(f"Corrupted MAX {row[1]}: '{line}")
-                            continue
-                        last_line = line
-                        all_data.append(row)
-                    else:
-                        if min_time >= 8691467: # a bit random number
-                            # assume the time is wrapped around
-                            if len(all_data):
-                                headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
-                                df = pd.DataFrame(data=all_data, columns=headers)
-                                df["time(ms)"] = df["time(ms)"] - df["time(ms)"].min()
-                                df["date"] = start_time + pd.to_timedelta(df["time(ms)"], unit='ms')
-                                df["group_id"] = int(group_id)
-                                all_df.append(df)
-                                group_id += 1
-                                min_time = -1
-                            all_data = []
-                            print(line)
-                            has_sdet = True
-                            start_time = arr[0]
-                            print("start_time", start_time)
-                            # "0916-13:48:39.147"
-                            start_time = pd.to_datetime(year_str + start_time, utc=True, format="mixed")
 
-                        else:
-                            print(f"Corrupted time {min_time} > {row[0]}: '{line.strip()}")
-                            continue
+                    # try to check each field
+                    if row[1] < 0 or row[1] > 255:
+                        print(f"Corrupted Inlet_SUDS {row[1]}: '{line}")
+                        continue
+                    if row[2] < 0 or row[2] > 255:
+                        print(f"Corrupted IR_K {row[1]}: '{line}")
+                        continue
+                    if row[3] < 0 or row[3] > 1:
+                        print(f"Corrupted digital {row[1]}: '{line}")
+                        continue
+                    if row[4] < 0 or row[4] > 255:
+                        print(f"Corrupted MIN {row[1]}: '{line}")
+                        continue
+                    if row[5] < 0 or row[5] > 255:
+                        print(f"Corrupted MAX {row[1]}: '{line}")
+                        continue
+                    last_line = line
+
+                    delta_time = line_time - start_time
+                    hcu_time_ms = int(delta_time.total_seconds() * 1000)
+                    row = [hcu_time_ms] + row
+                    all_data.append(row)
 
                 except ValueError:
-                    # print("skip", line)
+                    print("SDECT parse error. Skip", line_number, line)
                     continue
-    print("Last valid line:", last_line)
+    print("SDET last valid line:", last_line)
     if len(all_data):
-        headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
         df = pd.DataFrame(data=all_data, columns=headers)
         offset = df["time(ms)"].min()
         if offset:
@@ -142,7 +120,7 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
         df["date"] = start_time + pd.to_timedelta(df["time(ms)"], unit='ms')
         df["group_id"] = int(group_id)
         all_df.append(df)
-    if len(all_df) == 0:
+    else:
         print("No SDET logs found in {}".format(filename))
         return pd.DataFrame()
 
@@ -191,7 +169,6 @@ def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timest
         return temp_df
 
     if "T(s)" not in temp_df.columns:
-        print("No T(s) in sdet_df", temp_df.columns)
         temp_df["T(s)"] = temp_df["time(ms)"] / 1000.0
 
     # "T(s)" offset to start of the injection
