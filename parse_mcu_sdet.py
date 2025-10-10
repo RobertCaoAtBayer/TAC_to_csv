@@ -48,6 +48,7 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
     group_id = 0
     min_time = -1
     with open(filename) as in_file:
+        last_line = ""
         for line in in_file:
             arr = line.split(" ")
             if " HFE:SDET#" in line:
@@ -100,14 +101,36 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                         if row[5] < 0 or row[5] > 255:
                             print(f"Corrupted MAX {row[1]}: '{line}")
                             continue
+                        last_line = line
                         all_data.append(row)
                     else:
-                        print(f"Corrupted time {row[0]}: '{line.strip()}")
-                        continue
+                        if min_time >= 8691467: # a bit random number
+                            # assume the time is wrapped around
+                            if len(all_data):
+                                headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
+                                df = pd.DataFrame(data=all_data, columns=headers)
+                                df["time(ms)"] = df["time(ms)"] - df["time(ms)"].min()
+                                df["date"] = start_time + pd.to_timedelta(df["time(ms)"], unit='ms')
+                                df["group_id"] = int(group_id)
+                                all_df.append(df)
+                                group_id += 1
+                                min_time = -1
+                            all_data = []
+                            print(line)
+                            has_sdet = True
+                            start_time = arr[0]
+                            print("start_time", start_time)
+                            # "0916-13:48:39.147"
+                            start_time = pd.to_datetime(year_str + start_time, utc=True, format="mixed")
+
+                        else:
+                            print(f"Corrupted time {min_time} > {row[0]}: '{line.strip()}")
+                            continue
 
                 except ValueError:
                     # print("skip", line)
                     continue
+    print("Last valid line:", last_line)
     if len(all_data):
         headers = "time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
         df = pd.DataFrame(data=all_data, columns=headers)
@@ -128,9 +151,9 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         output_filename = os.path.join(output_dir, "SDECT.csv")
-        if os.path.exists(output_filename):
-            df.to_csv(output_filename, index=False)
-            print(f"Create {output_filename}")
+        df.to_csv(output_filename, index=False)
+        print(f"Create {output_filename}")
+        plot_sdet_data(df, False, output_dir, x_field="date")
 
     return combined_df
 
@@ -167,10 +190,15 @@ def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timest
     if len(temp_df) == 0:
         return temp_df
 
+    if "T(s)" not in temp_df.columns:
+        print("No T(s) in sdet_df", temp_df.columns)
+        temp_df["T(s)"] = temp_df["time(ms)"] / 1000.0
+
     # "T(s)" offset to start of the injection
     min_time = temp_df["date"].min()
     offset = (min_time - start_time).total_seconds()
-    temp_df["T(s)"] = temp_df["T(s)"] + offset - temp_df["T(s)"].min()
+    ts_min = temp_df["T(s)"].min()
+    temp_df["T(s)"] = temp_df["T(s)"] + offset - ts_min
 
     return temp_df
 
