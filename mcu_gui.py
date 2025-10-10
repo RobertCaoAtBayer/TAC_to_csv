@@ -400,6 +400,9 @@ class InjectDigestData:
             s1.line(x, y, line_width=line_width, color=MyColors[i], legend_label=field)
             s1.scatter(x, y, fill_color="white", size=8, marker="+", color='orange')
 
+        yellow_box = BoxAnnotation(fill_color='yellow', fill_alpha=0.2, left=None, right=None, top=100, bottom=110)
+        s1.add_layout(yellow_box)
+
         # Add the second y-axis to plot the digital signal
         s1.extra_y_ranges = {"y2": Range1d(start=0, end=1)}
         axis = LinearAxis(y_range_name="y2", axis_label='Digital')
