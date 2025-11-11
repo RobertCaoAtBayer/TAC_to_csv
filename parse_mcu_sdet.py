@@ -31,8 +31,8 @@ def combine_sdet_file_in_dir(dir_name):
     print(output_filename)
     return output_filename
 
-
 def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
+    """Parse SDET data from QML_DebugTool log file for PSV version 1.12.0 and newer with SDET prefix"""
     if os.path.isdir(filename):
         filename = combine_sdet_file_in_dir(filename)
 
@@ -47,12 +47,18 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
     all_df = []
     group_id = 0
     headers = "time(ms),mcu_time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
-
+    psv_gt_1_12 = False
     with open(filename) as in_file:
         last_line = ""
         for line_number, line in enumerate(in_file):
             arr = line.split(" ")
             if " HFE:SDET#" in line:
+                if "SDET, " in line:
+                    psv_gt_1_12 = True
+                    headers = "time(ms),mcu_time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX,Injector_State".split(',')
+                else:
+                    psv_gt_1_12 = False
+                    headers = "time(ms),mcu_time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX".split(',')
                 if len(all_data):
                     df = pd.DataFrame(data=all_data, columns=headers)
                     df["time(ms)"] = df["time(ms)"] - df["time(ms)"].min()
@@ -65,12 +71,14 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                 print(line)
                 has_sdet = True
             elif has_sdet and ',' in line:
-                row = arr[-1].split(',')
-                if len(row) != 6:
+                if psv_gt_1_12 and "SDET, " not in line:
                     # print("skip", line)
                     continue
-                row[-1] = row[-1].split("\\")[0]
+                row = arr[-1].split(',')
+                if len(row) != len(headers) -1:  # the header contain extra hcu time field after parsing
+                    continue
 
+                row[-1] = row[-1].split("\\")[0]
                 line_time = pd.to_datetime(year_str + arr[0], utc=True, format="mixed")
 
                 if len(all_data) == 0:
@@ -160,7 +168,7 @@ def plot_sdet_data(df: pd.DataFrame, show: bool = False, output_dir: str = ".", 
         if show:
             plt.show()
         plt.clf()
-        plt.close()
+        plt.close(fig)
 
 def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timestamp, end_time: pd.Timestamp) -> pd.DataFrame:
     delta = pd.to_timedelta(0, unit='s')
@@ -180,13 +188,18 @@ def extract_sdet_data_between_times(sdet_df: pd.DataFrame, start_time: pd.Timest
     return temp_df
 
 
-def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: str):
+def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: str, show_plot: bool = False):
     if len(sdet_df) == 0:
         return
     sdet_df["date"] = pd.to_datetime(sdet_df["date"], utc=True, format='mixed')
     for filename in glob.glob(injection_dir + '/protocol_*_digest.csv'):
-        digest_df = pd.read_csv(filename, skiprows=1)  # skip first row
-        digest_df.reset_index(drop=True, inplace=True)
+        try:
+            digest_df = pd.read_csv(filename, skiprows=1)  # skip first row
+            digest_df.reset_index(drop=True, inplace=True)
+        except pd.errors.ParserError as e:
+            print("FAIL to parse ", filename)
+            print(e)
+            continue
         # print("injection_df", injection_df.columns)
         digest_df["time"] = pd.to_datetime(digest_df["time"], utc=True, format='mixed')
         digest_df["injector_state"] = digest_df["injector_state"].astype("category")
@@ -216,9 +229,10 @@ def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: 
             output_name = name_prefix +".png"
             plt.savefig(output_name, dpi=200)
             print("Created", output_name)
-            # plt.show()
+            if show_plot:
+                plt.show()
             plt.clf()
-            plt.close()
+            plt.close(fig)
 
 
 def main():
@@ -236,7 +250,7 @@ def main():
 
     plot_sdet_data(df, args.show, args.output_dir, x_field="date")
 
-    match_sdet_to_injections_at_directory(df, args.output_dir)
+    match_sdet_to_injections_at_directory(df, args.output_dir, args.show)
 
 
 

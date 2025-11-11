@@ -56,8 +56,6 @@ def mcu_diagnostic_alert_to_suds(data_dir, output_dir: str, to_feather=False):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir,exist_ok=True)
 
-
-
     df_dict = dict()
     for data_csv in glob.glob(os.path.join(data_dir, "*.csv")):
         df = pd.read_csv(data_csv)
