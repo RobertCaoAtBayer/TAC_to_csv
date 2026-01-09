@@ -113,7 +113,15 @@ def extract_mcu_file(path, to_directory='.'):
             else:
                 name_list = []
             for member_name in name_list:
+                if "SruLogArchive.tar.gz" in member_name:
+                    print("Extracting embedded SRU log", member_name)
+                    file.extract(member_name, to_directory)
+                    sru_log = os.path.join(to_directory, member_name)
+                    return extract_mcu_file(sru_log, to_directory)
                 if "Mcu." in member_name:
+                    file.extract(member_name, to_directory)
+                    print("Extracting", member_name)
+                elif "All." in member_name:
                     file.extract(member_name, to_directory)
                     print("Extracting", member_name)
                 elif "QML_DebugTool" in member_name:
