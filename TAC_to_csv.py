@@ -1,3 +1,7 @@
+"""
+TAC Conversion Tool GUI Application
+v. 1.5 - add support for new TAC containing SRU log as zip file
+"""
 import tkinter
 import tkinter as tk
 from tkinter import ttk
@@ -11,7 +15,7 @@ from parse_mcu_log import process_mcu_log_or_zip
 
 
 class TacConversionToolApp:
-    base_title = "TAC Conversion Tool V1.4"
+    base_title = "TAC Conversion Tool V1.5"
 
     def __init__(self):
         self.root = tkinter.Tk()
