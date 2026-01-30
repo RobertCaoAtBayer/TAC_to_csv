@@ -70,6 +70,12 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                 all_data = []
                 print(line)
                 has_sdet = True
+            elif not has_sdet and "SDET, " in line:
+                # someone put in the command manually or the new SDET format has been wrapped (can't detect the old SDET format)
+                has_sdet = True
+                all_data = []
+                psv_gt_1_12 = True
+                headers = "time(ms),mcu_time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX,Injector_State".split(',')
             elif has_sdet and ',' in line:
                 if psv_gt_1_12 and "SDET, " not in line:
                     # print("skip", line)
