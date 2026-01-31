@@ -3,14 +3,10 @@
  - find sdet and parsing data
 """
 import datetime
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import glob
-
-from bokeh.io import output_file
-
 
 def combine_sdet_file_in_dir(dir_name):
     output_filename = os.path.join(dir_name, 'QML_DebugTool-all.log')
@@ -121,7 +117,7 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
                     all_data.append(row)
 
                 except ValueError:
-                    print("SDECT parse error. Skip", line_number, line)
+                    print("SDET parse error. Skip", line_number, line)
                     continue
     print("SDET last valid line:", last_line)
     if len(all_data):
@@ -142,7 +138,7 @@ def parse_mcu_sdet(filename: str, output_dir: str | None) -> pd.DataFrame:
 
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-        output_filename = os.path.join(output_dir, "SDECT.csv")
+        output_filename = os.path.join(output_dir, "SDET.csv")
         df.to_csv(output_filename, index=False)
         print(f"Create {output_filename}")
         plot_sdet_data(df, False, output_dir, x_field="date")
@@ -160,6 +156,7 @@ def plot_sdet_data(df: pd.DataFrame, show: bool = False, output_dir: str = ".", 
 
         # time(ms),Inlet_SUDS,IR_K,digital,MIN,MAX,date,group_id
         fig, ax = plt.subplots(figsize=(16, 8))
+        # noinspection PyArgumentList
         ax = fdf.plot(x_field, ["Inlet_SUDS", "IR_K"], marker='.', ax=ax)
         ax.set_ylabel("Analog value")
         ax.set_title(f"SDET group {group} N={len(fdf)}")
@@ -167,6 +164,7 @@ def plot_sdet_data(df: pd.DataFrame, show: bool = False, output_dir: str = ".", 
         ax.grid()
         ax1 = ax.twinx()
         ax1.set_ylabel("Digital value")
+        # noinspection PyArgumentList
         fdf.plot(x_field, ["digital"], color='red', ax=ax1)
         output_name = os.path.join(output_dir, f"SDET_group{group}.png")
         plt.savefig(output_name, dpi=200)
@@ -222,6 +220,8 @@ def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: 
             fig, ax = plt.subplots(figsize=(16, 8))
             base_name = os.path.basename(filename)
             name_prefix = os.path.splitext(filename)[0] + "_SDET"
+
+            # noinspection PyArgumentList
             ax = temp_df.plot(x_field, ["Inlet_SUDS", "IR_K"], marker='.', ax=ax)
             ax.set_ylabel("Analog value")
             ax.set_title(f"Injection {base_name}: SDET data\nN={len(temp_df)} - {start_time} to {end_time}")
@@ -229,6 +229,7 @@ def match_sdet_to_injections_at_directory(sdet_df: pd.DataFrame, injection_dir: 
             ax.grid()
             ax1 = ax.twinx()
             ax1.set_ylabel("Digital value")
+            # noinspection PyArgumentList
             temp_df.plot(x_field, ["digital"], color='red', ax=ax1)
             plt.tight_layout()
             temp_df.to_csv(name_prefix + ".csv", index=False)
