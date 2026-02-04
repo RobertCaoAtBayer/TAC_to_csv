@@ -59,7 +59,9 @@ class DigestsData:
 def extract_digests(log_filename):
     digest_data = DigestsData()
     digest_data.from_mcu_log(log_filename)
-    digest_data.save_digests(os.path.splitext(log_filename)[0] + "_digests.csv")
+    filename = os.path.splitext(log_filename)[0] + "_digests.csv"
+    digest_data.save_digests(filename)
+    return filename
 
 def get_sru_log_file_list(prefix):
     return [prefix + "." + ext for ext in ['old3.log', 'old2.log', 'old1.log', 'log']]
@@ -296,6 +298,26 @@ def combine_mcu_link_log(log_list: list) -> str:
     return out_name
 
 
+def extract_diagnostic_message_from_digest_csv(csv_filename):
+    """
+    Extract diagnostic messages from digest csv file and save to a separate csv file for easier analysis.
+    Expect the digest csv file to have the following columns:
+    time,alarmcode,injector_state,inject_complete_reason,pressure,sc1,sc2,sc3,plng1,plng2,plng3,syract1,syract2,syract3,
+    vol1,vol2,vol3,flow1,flow2,flow3,battery_level,ac_powered,door,wastebin,muds_present,muds_latch,inbubble1,inbubble2,inbubble3,
+    suds,sudsbubble,primebtn,stopbtn,doorbtn,outlet_door_state,heater1_temperature,heater2_temperature,heater_state,shutdown_state,
+    diagnostic,mcu_log_message,alarms
+    """
+    df = pd.read_csv(csv_filename)
+    # only keep rows with diagnostic messages
+    df = df[df["diagnostic"].notna() & (df["diagnostic"] != "")]
+
+    diagnostic_message_df = pd.DataFrame(df[["time", "diagnostic"]])
+    if len(diagnostic_message_df):
+        diagnostic_message_filename = os.path.splitext(csv_filename)[0] + "_diagnostic_messages.csv"
+        diagnostic_message_df.to_csv(diagnostic_message_filename, index=False)
+        print("Created", diagnostic_message_filename)
+
+
 def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -313,7 +335,8 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
             match_sdet_to_injections_at_directory(sdet_df, output_dir)
     elif log_filename.endswith(".log"):
         file_list += extract_all_injections(log_filename, output_dir, len(file_list) + 1)
-        extract_digests(log_filename)
+        digest_csv_filename = extract_digests(log_filename)
+        extract_diagnostic_message_from_digest_csv(digest_csv_filename)
         # assume no sdet data in single log file
     else:
         if log_filename.endswith('.tar.gz'):
@@ -326,7 +349,8 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
         combine_log_name = combine_mcu_link_log(log_list)
         if os.path.exists(combine_log_name):
             file_list = file_list + extract_all_injections(combine_log_name, output_dir, len(file_list) + 1)
-            extract_digests(combine_log_name)
+            digest_csv_filename = extract_digests(combine_log_name)
+            extract_diagnostic_message_from_digest_csv(digest_csv_filename)
 
         sdet_df = parse_mcu_sdet(os.path.dirname(combine_log_name), output_dir)
         if len(sdet_df):
