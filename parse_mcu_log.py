@@ -307,7 +307,15 @@ def extract_diagnostic_message_from_digest_csv(csv_filename):
     suds,sudsbubble,primebtn,stopbtn,doorbtn,outlet_door_state,heater1_temperature,heater2_temperature,heater_state,shutdown_state,
     diagnostic,mcu_log_message,alarms
     """
-    df = pd.read_csv(csv_filename)
+    try:
+        df = pd.read_csv(csv_filename)
+    except pd.errors.ParserError as ex:
+        ex_str = str(ex)
+        print("Error parsing", csv_filename)
+        print("ERROR:", ex_str)
+        return pd.DataFrame()
+
+
     # only keep rows with diagnostic messages
     df = df[df["diagnostic"].notna() & (df["diagnostic"] != "")]
 
