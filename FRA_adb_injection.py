@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import StringIO
 import os.path
+import datetime
 # noinspection PyPep8Naming
 import xml.etree.ElementTree as ET
 from matplotlib.pyplot import tight_layout
@@ -53,6 +54,12 @@ def plot_injection(df: pd.DataFrame, timestamp: str, units_dict: dict, output_di
     @return:
     """
 
+    ts = pd.to_datetime(timestamp, utc=True, format='mixed')
+
+    # 27th Feb 2026.
+    # if ts < pd.to_datetime('2026-02-26'):
+    #     return
+
     # remove negative phase index
     df = pd.DataFrame(df[df["PN"] >= 0])
 
@@ -98,13 +105,15 @@ def plot_injection(df: pd.DataFrame, timestamp: str, units_dict: dict, output_di
     flush_vol = df["AV"].max()
     contrast_vol = df["BV"].max()
     dt = df["TO"].max()
-    title = "% saline: %.1f mL contrast: %.01f mL duration: %.02fs (%s)" % (output_prefix, flush_vol, contrast_vol, dt, timestamp)
+    title = "Saline: %.1f mL contrast: %.01f mL duration: %.02fs (%s)" % (flush_vol, contrast_vol, dt, timestamp)
     plt.suptitle(title)
 
     if output_dir:
-        ts = pd.to_datetime(timestamp, utc=True, format='mixed')
         save_plot_name = os.path.join(output_dir, "%s_%s.png" % (output_prefix, ts.strftime("%Y%m%d_%H%M%S")))
         plt.savefig(save_plot_name, dpi=200)
+        # Set file modification time to ts
+        ts_unix = ts.timestamp()
+        os.utime(save_plot_name, (ts_unix, ts_unix))
         print("Created", save_plot_name)
     else:
         plt.show()

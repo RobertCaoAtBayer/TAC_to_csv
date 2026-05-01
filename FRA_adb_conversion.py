@@ -146,7 +146,24 @@ def extract_alert_from_tac_report_zip(zip_file_path: str, output_dir: str) -> pd
     serial = "unknown"
     for fra_filename in file_list:
         # print(fra_filename)
-        df = pd.read_json(fra_filename)
+        # Try reading with utf-8, then fallback to other encodings if UnicodeDecodeError occurs
+        encodings_to_try = ["utf8", "latin1", "utf-16", "cp1252"]
+        df = None
+        for enc in encodings_to_try:
+            try:
+                df = pd.read_json(fra_filename, encoding=enc)
+                break
+            except UnicodeDecodeError:
+                print(f"UnicodeDecodeError with encoding {enc} for file {fra_filename}")
+                continue
+            except Exception as ex:
+                print(f"Other error with encoding {enc} for file {fra_filename}: {ex}")
+                continue
+        if df is None:
+            print("===============================================================" )
+            print("ERROR: failed to load json file with all attempted encodings:", fra_filename)
+            continue
+
         if len(df):
             print("Processing", fra_filename, len(df))
         else:
@@ -296,7 +313,6 @@ def adb_zipfile_to_csv(zip_file_path: str, output_dir: str, output_json) -> pd.D
 
     opener, mode = zipfile.ZipFile, 'r'
     try:
-        print("here3")
         # noinspection PyTypeChecker
         file = opener(zip_file_path, mode)
         try:
@@ -355,8 +371,17 @@ def generate_output_from_df_for_serial(injector_serial: str, all_df: pd.DataFram
     if not os.path.exists(serial_dir):
         os.mkdir(serial_dir)
     all_df.to_csv(os.path.join(serial_dir, injector_serial + ".csv"), index=False)
-    all_df.reset_index(inplace=True)
-    all_df.to_feather(os.path.join(serial_dir, injector_serial + ".feather"))
+    try:
+        all_df.reset_index(inplace=True)
+    except ValueError as e:
+        print("ERROR: all_df.reset_index(inplace=True) value error", e)
+    except Exception as e:
+        print("ERROR: all_df.reset_index(inplace=True)", e)
+    try:
+        all_df.to_feather(os.path.join(serial_dir, injector_serial + ".feather"))
+    except Exception as e:
+        print("ERROR: all_df.to_feather", e)
+
     print("Created", os.path.join(serial_dir, injector_serial + ".csv"))
     print("Created", os.path.join(serial_dir, injector_serial + ".feather"))
 

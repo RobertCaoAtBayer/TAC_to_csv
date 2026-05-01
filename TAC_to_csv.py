@@ -8,8 +8,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 import os.path
-# from parse_mcu_log import main as parse_mcu_main
-# from tkinterdnd2 import DND_FILES, TkinterDnD
 from FRA_adb_injection import generate_injection_plots_from_injection_csv
 from FRA_adb_conversion import process_adb_or_tac_files
 from parse_mcu_log import process_mcu_log_or_zip
@@ -26,7 +24,7 @@ class TacConversionToolApp:
         self.tac_file_path = tk.StringVar()
         self.adb_file_path = tk.StringVar()
         self.output_file_name = tk.StringVar()
-        self.checkbox_var = tk.BooleanVar()
+        self.generate_plots_var = tk.BooleanVar()
         self.selected_dropdown = tk.IntVar(value=100)
         root.minsize(600, 300)
         root.maxsize(1024, 500)
@@ -42,11 +40,6 @@ class TacConversionToolApp:
         tac_button.grid(row=0, column=1, padx=2)
         tac_frame.columnconfigure(0, weight=1)
 
-        # noinspection PyUnresolvedReferences
-        # tac_entry.drop_target_register(DND_FILES)
-        # noinspection PyUnresolvedReferences
-        # tac_entry.dnd_bind('<<Drop>>', self.on_drop_tac)
-
         # ADB File Selection
         adb_frame = tk.Frame(root)
         adb_frame.pack(fill='x', expand=True, pady=5)
@@ -55,11 +48,6 @@ class TacConversionToolApp:
         adb_button = ttk.Button(adb_frame, text="Select ADB File", command=self.open_adb_file_dialog)
         adb_button.grid(row=0, column=1, padx=2)
         adb_frame.columnconfigure(0, weight=1)
-
-        # noinspection PyUnresolvedReferences
-        # adb_entry.drop_target_register(DND_FILES)
-        # noinspection PyUnresolvedReferences
-        # adb_entry.dnd_bind('<<Drop>>', self.on_drop_adb)
 
         # Output File Name
         output_frame = tk.Frame(root)
@@ -76,7 +64,7 @@ class TacConversionToolApp:
         checkbox_frame.pack(pady=3)
 
         checkbox = ttk.Checkbutton(checkbox_frame, text="Generate Injection Plots", command=self.toggle_plot,
-                                   variable=self.checkbox_var, onvalue=1, offvalue=0)
+                                   variable=self.generate_plots_var, onvalue=1, offvalue=0)
         checkbox.grid(row=0, column=0, sticky='w')
 
         # Dropdown showing options for number of plots
@@ -138,22 +126,10 @@ class TacConversionToolApp:
             self.output_file_name.set(output_folder_path)  # Update the output folder variable
 
     def toggle_plot(self):
-        if self.checkbox_var.get():
+        if self.generate_plots_var.get():
             self.dropdown.grid()
         else:
             self.dropdown.grid_remove()
-
-    def on_drop_tac(self, event):
-        dropped_path = event.data.strip('{}')  # Clean the path
-        if os.path.exists(dropped_path):
-            self.tac_file_path.set(dropped_path)
-        print("Dropped TAC event:", event, dropped_path)
-
-    def on_drop_adb(self, event):
-        dropped_path = event.data.strip('{}')  # Clean the path
-        if os.path.exists(dropped_path):
-            self.adb_file_path.set(dropped_path)
-        print("Dropped adb event:", event, dropped_path)
 
     def on_convert_tac(self):
         tac_filename = self.tac_file_path.get()
@@ -176,7 +152,7 @@ class TacConversionToolApp:
 
         process_adb_or_tac_files(adb_filename, tac_filename, output_dir, output_json)
 
-        if self.checkbox_var.get() and adb_filename is not None:
+        if self.generate_plots_var.get() and adb_filename is not None:
             csv_file = os.path.join(output_dir, "injection.csv")  # Adjust this path as needed
             if os.path.exists(csv_file):
                 plots_dir = os.path.join(output_dir, "injection_plots")
@@ -185,7 +161,7 @@ class TacConversionToolApp:
 
                 selected_injections = self.selected_dropdown.get()
                 last_n_injections = selected_injections
-                output_prefix = "PLOT_INJ"
+                output_prefix = "PLOT_INJ_"
                 generate_injection_plots_from_injection_csv(csv_file, plots_dir, output_prefix, last_n_injections)
 
         self.progress_bar['value'] = 100
