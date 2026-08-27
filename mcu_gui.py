@@ -202,7 +202,7 @@ class InjectDigestData:
             self.data[:, 27] = self.data[:, 27] * 515 / 4095.0 - 15  # pin_120
 
             # kPA to psi
-            for i in (4, 5, 6, 7, 29):
+            for i in (4, 5, 6, 7):
                 self.data[:, i] /= 6.894757
 
             self._df = pd.DataFrame({name: self.data[:, i] for i, name in enumerate(self.headers)})
@@ -228,8 +228,8 @@ class InjectDigestData:
     def get_df(self) -> pd.DataFrame:
         return self._df
 
-    def plot_oad_air_count(self, output_filename=None) -> (float, float):
-        """Plot the outlet air detector result (old firmware does not have OAD volume log)"""
+    def plot_oad_air_count(self, output_filename=None) -> tuple[float, float]:
+        """Plot the outlet air detector result (old firmware does not have OAD volume log) and return a tuple of start time and end time"""
         ts, te = self.get_air_start_end_time()
         if ts >= te:
             print("Skip OAD plot because it is empty", ts, te)
@@ -279,7 +279,6 @@ class InjectDigestData:
             return 0, 0
         cdf['air_vol(ml)'] = cdf['patient_line_air_volume_ul'] / 1000
         cdf['air_count'] = cdf['patient_line_aircounts']
-
 
         ax = cdf.plot("Time(s)", "air_vol(ml)", c='orange')
         ax.grid()
@@ -613,8 +612,7 @@ class InjectDigestData:
         self.get_pressure_error_per_phase(protocol)
 
         all_figures = [
-            # 27 air count
-            # 26 = air vol in um.
+            # 27 air count, 29 = air vol in um.
 
             # @todo convert this to pandas style to avoid number indexing
             self._create_figure(width, height, "Flow rate", x, range(31, 34), y_axis_label="Flow rate(mL/s)"),
@@ -751,12 +749,14 @@ class InjectDigestData:
             all_figures = [PreText(text='Phase %d volume error: %s - %s = %s' %
                                         (phase, str(actual_volumes), str(expected_volumes), str(vol_errors)))
                            ] + all_figures
-        bleeding_data = self.is_phase_bleeding(protocol, phase_end_data_indices)
-        print("Bleeding", len(bleeding_data) > 0)
-        if len(bleeding_data):
-            bleeding_stuff = [
-                PreText(text='BLEEDING: %s' % bleeding_str, width=width) for bleeding_str in bleeding_data]
-            all_figures = all_figures + bleeding_stuff
+        check_bleeding = False
+        if check_bleeding:
+            bleeding_data = self.is_phase_bleeding(protocol, phase_end_data_indices)
+            print("Bleeding", len(bleeding_data) > 0)
+            if len(bleeding_data):
+                bleeding_stuff = [
+                    PreText(text='BLEEDING: %s' % bleeding_str, width=width) for bleeding_str in bleeding_data]
+                all_figures = all_figures + bleeding_stuff
 
         air_vol_ul, air_vol_count = self.get_oad_air_vol()
         air_text = "AIR: %dµl count %d" % (air_vol_ul, air_vol_count)
@@ -779,7 +779,7 @@ class InjectDigestData:
         return all_figures
 
     # noinspection PyTypeChecker
-    def get_oad_air_vol(self):
+    def get_oad_air_vol(self) -> tuple[int, int]:
         air_vol_ul = self.data[-1, 29]
         air_vol_count = self.data[-1, 26]
         return air_vol_ul, air_vol_count

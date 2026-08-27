@@ -5,6 +5,7 @@ v. 1.6 - support sdet for typing sdet manually
 """
 import tkinter
 import tkinter as tk
+import zipfile
 from tkinter import ttk
 from tkinter import filedialog
 import os.path
@@ -146,7 +147,16 @@ class TacConversionToolApp:
             print("Please select either ADB or TAC file")
             return
         if tac_filename is not None:
-            process_mcu_log_or_zip(tac_filename, output_dir, new_oad=True)
+            try:
+                process_mcu_log_or_zip(tac_filename, output_dir, new_oad=True)
+            except zipfile.BadZipFile as ex:
+                print("Bad zip file processing TAC file:", ex)
+                return
+            except Exception as ex:
+                print("Error processing TAC file:", ex)
+                return
+
+
             if tac_filename.endswith("tar.gz"):
                 tac_filename = None     # No alert info in SRU log, so we don't need to process it further
 
