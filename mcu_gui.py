@@ -242,14 +242,14 @@ class InjectDigestData:
         cdf['air_count'] = cdf['patient_line_aircounts']
         cdf['delta_air_count'] = cdf.air_count.diff()
 
-        ax = cdf.plot("Time(s)", "air_count", c='green')
+        ax = cdf.plot(x="Time(s)", y="air_count", c='green')
         ax.grid()
         ax.set_ylabel("Air count")
         ax.yaxis.label.set_color('green')
         ax.legend(loc='upper left')
 
         ax2 = ax.twinx()
-        cdf.plot.scatter("Time(s)", "delta_air_count", ax=ax2,  c='green')
+        cdf.plot.scatter(x="Time(s)", y="delta_air_count", ax=ax2,  c='green')
         ax2.set_ylabel("Delta Air Count")
         ax2.legend(loc='lower right')
         ax2.yaxis.label.set_color('green')
@@ -263,7 +263,7 @@ class InjectDigestData:
         plt.close()
         return ts, te
 
-    def plot_oad(self, output_filename=None) -> (float, float):
+    def plot_oad(self, output_filename=None) -> tuple[float, float]:
         """Plot the outlet air detector result"""
         ts, te = self.get_air_start_end_time()
         if ts >= te:
@@ -280,14 +280,14 @@ class InjectDigestData:
         cdf['air_vol(ml)'] = cdf['patient_line_air_volume_ul'] / 1000
         cdf['air_count'] = cdf['patient_line_aircounts']
 
-        ax = cdf.plot("Time(s)", "air_vol(ml)", c='orange')
+        ax = cdf.plot(x="Time(s)", y="air_vol(ml)", c='orange')
         ax.grid()
         ax.set_ylabel("Air volume(ml)")
         ax.yaxis.label.set_color('orange')
         ax.legend(loc='upper left')
 
         ax2 = ax.twinx()
-        cdf.plot("Time(s)", "air_count", ax=ax2, style='--', c='green')
+        cdf.plot(x="Time(s)", y="air_count", ax=ax2, style='--', c='green')
         cdf['delta_air_count'] = cdf.air_count.diff()
         cdf.plot.scatter("Time(s)", "delta_air_count", c='green', ax=ax2)
         ax2.set_ylabel("Air Count")
@@ -354,7 +354,7 @@ class InjectDigestData:
             # nz_dt is in seconds
             # PULSES_PER_10ML 83577
             # 1ml = 8357.7
-            speed = nz_dy / (nz_dt * (PULSES_PER_10ML / 10.0))  # @todo the unit is not quite right
+            speed = nz_dy / (nz_dt * (PULSES_PER_10ML / 10.0))
 
             # Attempt to remove the bad motor position at the end of the phase
             # due to MCU go back in time and report the last phase volume in the inject digest.
@@ -434,7 +434,7 @@ class InjectDigestData:
                 s1.oval(x, y, line_width=line_width, color=color, legend_label=self.headers[i])
         return s1
 
-    def get_phase_volumes(self, phase: int) -> list:
+    def get_phase_volumes(self, phase: int) -> tuple[float, float, float]:
         """
         return a list of 3 volumes s0, c1, c2
         """
@@ -555,6 +555,7 @@ class InjectDigestData:
         # 27 pin_120
         for phase in sorted(df['phase'].unique()):
             # 40 duration_phase_i
+            phase = int(phase)
             indices = df['phase'] == phase
             indices = np.bitwise_and(indices, df['duration_phase_i'] > 750)  # 2 seconds before the phase start
             dff = pd.DataFrame(df[indices])
@@ -562,7 +563,7 @@ class InjectDigestData:
             dff = dff[dff["duration_phase_i"] < max_time]
             pressure_errors = dff["injection_pressure"] - dff["Pressure_adc"]
 
-            phase_data = protocol.get_phases()[int(phase)]
+            phase_data = protocol.get_phases()[phase]
             print("Pressure errors in psi (name, flow, min, max, avg, std)",
                   phase_data[0],    # name
                   phase_data[3],    # flow
@@ -584,7 +585,7 @@ class InjectDigestData:
                 pass
 
             if show_plot:
-                ax = dff.plot("duration_phase_i", ["injection_pressure", "pin_120"])
+                ax = dff.plot(x="duration_phase_i", y=["injection_pressure", "pin_120"])
                 ax.grid()
                 plt.show()
                 plt.clf()
@@ -792,7 +793,7 @@ def show_result(**kwargs):
     html_filename = name + ".html"
     print("Create", html_filename)
     output_file(html_filename, title=title)
-    dir_name = os.path.dirname(inject_digest_csv_filename)
+    dir_name = str(os.path.dirname(inject_digest_csv_filename))
 
     dd = InjectDigestData()
     dd.load_file(inject_digest_csv_filename, verbose=False)
