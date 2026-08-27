@@ -156,10 +156,11 @@ class InjectDigestData:
                 start_time = pd.to_datetime(arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
                 arr = arr  + [start_time]  # starting with 0 delta time
                 headers += ["datetime"]  # add the delta time column
-            except:
+            except (ValueError, TypeError, AttributeError) as ex:
                 print("LINE:", arr_str)
                 print("ERROR invalid inject digest data format in ", filename)
-                return False
+                print("Exception:", ex)
+                return 0
             data.append(arr)
 
             while 1:
@@ -173,7 +174,7 @@ class InjectDigestData:
                     arr = [float(x) for x in idc.parse_response(",".join(arr_str[2:]), verbose=verbose)]
                     id_time = pd.to_datetime(arr_str[0], format="%Y%m%d-%H:%M:%S.%f", utc=True)
                     arr = arr + [id_time]
-                except:
+                except (ValueError, TypeError, AttributeError):
                     arr = None
                     pass  # skip error
                 if arr is not None:
@@ -500,7 +501,7 @@ class InjectDigestData:
             # each phase has (type, mix, vol, flow, delay)
             phase_type = phase_data[phase_index][0]
             programmed_flow = phase_data[phase_index][3]
-            s0_flow = df.iloc[data_index]['saline_flowrate_phase']
+            s0_flow = df.iloc[data_index]['saline_flow_rate_phase']
             c1_flow = df.iloc[data_index]['contrast1_flow_rate_phase']
             c2_flow = df.iloc[data_index]['contrast2_flow_rate_phase']
             if phase_type == 'SALINE':
@@ -581,7 +582,7 @@ class InjectDigestData:
                            np.std(pressure_errors)]
                     arr = [str(x) for x in arr]
                     fh.write(",".join(arr) + "\n")
-            except:
+            except (IOError, OSError, ValueError):
                 pass
 
             if show_plot:
@@ -781,6 +782,10 @@ class InjectDigestData:
 
     # noinspection PyTypeChecker
     def get_oad_air_vol(self) -> tuple[int, int]:
+        if len(self.data) == 0:
+            return 0, 0
+        if self.data.shape[1] <= 29:
+            return 0, 0
         air_vol_ul = self.data[-1, 29]
         air_vol_count = self.data[-1, 26]
         return air_vol_ul, air_vol_count
