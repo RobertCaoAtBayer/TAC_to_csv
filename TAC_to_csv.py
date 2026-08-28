@@ -171,7 +171,7 @@ class TacConversionToolApp:
 
                 selected_injections = self.selected_dropdown.get()
                 last_n_injections = selected_injections
-                output_prefix = "PLOT_INJ_"
+                output_prefix = "PLOT_INJECTION"
                 generate_injection_plots_from_injection_csv(csv_file, plots_dir, output_prefix, last_n_injections)
 
         self.progress_bar['value'] = 100

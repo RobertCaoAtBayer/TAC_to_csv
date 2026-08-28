@@ -1,11 +1,13 @@
+import gc
 import pandas as pd
+import matplotlib
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from io import StringIO
 import os.path
-import datetime
 # noinspection PyPep8Naming
 import xml.etree.ElementTree as ET
-from matplotlib.pyplot import tight_layout
 # from openpyxl.styles.alignment import horizontal_alignments
 # from pendulum import duration
 # from win32trace import flush
@@ -43,7 +45,8 @@ def find_transitions(df: pd.DataFrame, column: str) -> list:
     return transitions
 
 
-def plot_injection(df: pd.DataFrame, timestamp: str, units_dict: dict, output_dir: str = None, output_prefix: str = "injection"):
+def plot_injection(df: pd.DataFrame, timestamp: str, units_dict: dict, output_dir: str | None = None,
+                   output_prefix: str = "injection"):
     """
 
     @param df: Index(['TO', 'PN', 'LM', 'AV', 'AR', 'AP', 'BV', 'BR', 'BP'], dtype='object')
@@ -63,72 +66,79 @@ def plot_injection(df: pd.DataFrame, timestamp: str, units_dict: dict, output_di
     # remove negative phase index
     df = pd.DataFrame(df[df["PN"] >= 0])
 
-    fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, ncols=1, figsize=(15, 9), sharex=True, tight_layout=True)
-    df.plot(x='TO', y=['AV', "BV"], ax=ax2)
-    df.plot(x='TO', y=['AR', "BR"], ax=ax1)
-    df.plot(x='TO', y=['AP', "BP"], ax=ax0)
-    ax0.set_ylabel("Pressure(%s)" % units_dict["AP"])
-    ax1.set_ylabel("Flow rate(%s)" % units_dict["AR"])
-    ax2.set_ylabel("Volume(%s)" % units_dict["AV"])
+    # Use the Agg canvas, not pyplot/TkAgg. The TAC tool is a Tk app, so plt.subplots()
+    # would use TkAgg and leak GDI bitmaps on Windows ("Fail to allocate bitmap").
+    fig = Figure(figsize=(15, 9), tight_layout=True)
+    canvas = FigureCanvasAgg(fig)
+    ax0, ax1, ax2 = fig.subplots(nrows=3, ncols=1, sharex=True)
+    try:
+        df.plot(x='TO', y=['AV', "BV"], ax=ax2)
+        df.plot(x='TO', y=['AR', "BR"], ax=ax1)
+        df.plot(x='TO', y=['AP', "BP"], ax=ax0)
+        ax0.set_ylabel("Pressure(%s)" % units_dict["AP"])
+        ax1.set_ylabel("Flow rate(%s)" % units_dict["AR"])
+        ax2.set_ylabel("Volume(%s)" % units_dict["AV"])
 
-    all_phase_time = get_phase_time(df)
-    # print("all_phase_time", all_phase_time)
-    for ax in [ax0, ax1, ax2]:
-        t = 0
+        all_phase_time = get_phase_time(df)
+        for ax in [ax0, ax1, ax2]:
+            t = 0
+            for pn, min_t, max_t in all_phase_time:
+                if int(pn) % 2 == 1:
+                    ax.axvspan(t, max_t, facecolor='xkcd:sky blue', alpha=0.2)
+                t = max_t
+            ax.legend()
+            ax.grid()
+
         for pn, min_t, max_t in all_phase_time:
-            if int(pn) % 2 == 1:
-                ax.axvspan(t, max_t, facecolor='xkcd:sky blue', alpha=0.2)
-            else:
-                pass    # not drawing
-            t = max_t
-        ax.legend()
-        ax.grid()
+            ax2.text(min_t, 0, "Phase %d" % pn, rotation=90, verticalalignment='bottom', horizontalalignment='center')
 
-    # add phase number to the volume plot
-    for pn, min_t, max_t in all_phase_time:
-        ax2.text(min_t, 0, "Phase %d" % pn, rotation=90, verticalalignment='bottom', horizontalalignment='center')
-
-    # find adaptive flow and show on the pressure plot
-    af_transitions = find_transitions(df, "LM")
-    if len(af_transitions) > 0:
-        print(af_transitions)
-    t0 = df["TO"].min()
-    for index, value in af_transitions:
-        current_time = df["TO"].iloc[index]
-        if value == 1:
-            t0 = current_time
-            continue
-        else:
+        af_transitions = find_transitions(df, "LM")
+        if len(af_transitions) > 0:
+            print(af_transitions)
+        t0 = df["TO"].min()
+        for index, value in af_transitions:
+            current_time = df["TO"].iloc[index]
+            if value == 1:
+                t0 = current_time
+                continue
             ax0.axvspan(t0, current_time, facecolor='red', alpha=0.3)
 
-    # graph title
-    flush_vol = df["AV"].max()
-    contrast_vol = df["BV"].max()
-    dt = df["TO"].max()
-    title = "Saline: %.1f mL contrast: %.01f mL duration: %.02fs (%s)" % (flush_vol, contrast_vol, dt, timestamp)
-    plt.suptitle(title)
+        flush_vol = float(df["AV"].max())
+        contrast_vol = float(df["BV"].max())
+        dt = float(df["TO"].max())
+        title = "Saline: %.1f mL contrast: %.01f mL duration: %.02fs (%s)" % (
+            flush_vol, contrast_vol, dt, timestamp
+        )
+        fig.suptitle(title)
 
-    if output_dir:
-        save_plot_name = os.path.join(output_dir, "%s_%s.png" % (output_prefix, ts.strftime("%Y%m%d_%H%M%S")))
-        plt.savefig(save_plot_name, dpi=200)
-        # Set file modification time to ts
-        ts_unix = ts.timestamp()
-        os.utime(save_plot_name, (ts_unix, ts_unix))
-        print("Created", save_plot_name)
-    else:
-        plt.show()
+        if output_dir:
+            save_plot_name = os.path.join(output_dir, "%s_%s.png" % (output_prefix, ts.strftime("%Y%m%d_%H%M%S")))
+            fig.savefig(save_plot_name, dpi=150)
+            ts_unix = ts.timestamp()
+            os.utime(save_plot_name, (ts_unix, ts_unix))
+            print("Created", save_plot_name)
+        else:
+            plt.figure(fig)
+            plt.show()
+    finally:
+        fig.clear()
+        if getattr(canvas, "renderer", None) is not None:
+            canvas.renderer = None
+        fig.canvas = None
+        plt.close(fig)
+        plt.close("all")
 
-    plt.clf()
-    plt.close()
 
-
-def generate_injection_plots_from_injection_csv(path: str, output_dir: str = None, output_prefix: str = "injection", last_n_injections=100):
+def generate_injection_plots_from_injection_csv(path: str, output_dir: str | None = None,
+                                                output_prefix: str = "injection", last_n_injections=100):
     print("loading csv", path)
     injections_df = pd.read_csv(path)
     print(injections_df.shape, injections_df.columns)
 
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
+        # Avoid TkAgg even if another module already imported pyplot.
+        matplotlib.use("Agg", force=True)
 
     index = 0
     if last_n_injections is not None:
@@ -136,11 +146,20 @@ def generate_injection_plots_from_injection_csv(path: str, output_dir: str = Non
         if new_index > 0:
             index = new_index
 
-    for i, row in injections_df[index:].iterrows():
-        print("row %d/%d" % (int(i), len(injections_df)))
-        df, units_dict = extract_cdata(row["samples_xml"])
+    injections_df = pd.DataFrame(injections_df[index:])
+    for i, (index, row) in enumerate(injections_df.iterrows()):
+        print("row %d/%d" % (int(index), len(injections_df)))
+        parsed = extract_cdata(row["samples_xml"])
+        if parsed is None:
+            print("skip row %s: failed to parse samples_xml" % index)
+            continue
+        df, units_dict = parsed
         timestamp = row["created_date_time"]
         plot_injection(df, timestamp, units_dict, output_dir, output_prefix)
+        del df
+        del units_dict
+        if (i + 1) % 50 == 0:
+            gc.collect()
 
 
 def extract_cdata(xml_str: str) -> (pd.DataFrame, dict):
