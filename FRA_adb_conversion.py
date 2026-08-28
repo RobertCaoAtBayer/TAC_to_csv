@@ -105,16 +105,26 @@ def merge_duplicate_alerts(alert1: dict, alert2: dict) -> dict:
         sys.exit(1)
     if alert1["ActiveAt"] != alert2["ActiveAt"]:
         print("WARNING: not the same ActiveAt. Not expect to be here")
-    if alert1["InactiveAt"] is None:
-        return alert2
-    else:
-        if alert1["InactiveAt"] is not None and alert2["InactiveAt"] is not None:
-            if alert1["InactiveAt"] != alert2["InactiveAt"]:
-                print("WARNING: not the same InactiveAt. Not expect to be here")
-                print(alert1)
-                print(alert2)
-        # assume both alerts are the same
-        return alert1
+    
+    # Check if each alert has a valid InactiveAt value
+    alert1_inactive = alert1["InactiveAt"] is not None and not pd.isna(alert1["InactiveAt"])
+    alert2_inactive = alert2["InactiveAt"] is not None and not pd.isna(alert2["InactiveAt"])
+    
+    if not alert1_inactive:
+        return alert2  # alert1 still active, prefer alert2
+    
+    if not alert2_inactive:
+        return alert1  # only alert1 has InactiveAt info
+    
+    # Both have InactiveAt values - check if they match
+    if alert1["InactiveAt"] != alert2["InactiveAt"]:
+        print("WARNING: different InactiveAt values")
+        print(alert1)
+        print(alert2)
+        # Return the one with later InactiveAt
+        return alert1 if alert1["InactiveAt"] > alert2["InactiveAt"] else alert2
+    
+    return alert1
 
 # noinspection DuplicatedCode
 def extract_compressed_file(filename: str, to_directory='.') -> list:
