@@ -797,13 +797,35 @@ def show_result(**kwargs):
     title = '%s' % inject_digest_csv_filename
     html_filename = name + ".html"
     print("Create", html_filename)
+
+
     output_file(html_filename, title=title)
     dir_name = str(os.path.dirname(inject_digest_csv_filename))
 
     dd = InjectDigestData()
     dd.load_file(inject_digest_csv_filename, verbose=False)
-    protocol = dd.protocol
 
+    # protocol_0001_injectdigest.csv -> protocol_0001_digest.csv
+    digest_filename = "_".join(os.path.basename(inject_digest_csv_filename).split("_")[:-1]) + "_digest.csv"
+    digest_filename = os.path.join(str(os.path.dirname(inject_digest_csv_filename)), digest_filename)
+    if os.path.exists(digest_filename):
+        kwargs['digest_filename'] = digest_filename
+        digest_df = pd.read_csv(digest_filename, skiprows=1)
+        if len(digest_df) > 0:
+            if "filename_list" in kwargs:
+                kwargs['filename_list'].append(digest_filename)
+            else:
+                kwargs['filename_list'] = [digest_filename]
+
+            last_row = digest_df.iloc[-1]
+            inject_complete_reason = last_row["inject_complete_reason"]
+            kwargs['inject_complete_reason'] = inject_complete_reason
+            if "other_text_lines" in kwargs:
+                kwargs['other_text_lines'].append("Inject complete reason: %s" % inject_complete_reason)
+            else:
+                kwargs['other_text_lines'] = ["Inject complete reason: %s" % inject_complete_reason]
+
+    protocol = dd.protocol
 
     is_showing = 'is_show' in kwargs and kwargs['is_show']
     if dd.get_df() is not None:  # if data frame is available
@@ -846,7 +868,6 @@ def show_result(**kwargs):
             csvwriter.writerow(row)
         png_name = os.path.splitext(inject_digest_csv_filename)[0] + "-air.png"
 
-        new_oad = 'new_oad' in kwargs and kwargs['new_oad']
         df = dd.get_df()
         if "patient_line_air_volume_ul" in df.columns: # new OAD data
             dd.plot_oad(png_name)
