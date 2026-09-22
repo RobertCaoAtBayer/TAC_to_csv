@@ -136,6 +136,7 @@ def generate_suds_analog_summary(all_df: pd.DataFrame, output_dir: str, serial: 
 def convert_df_to_suds_analog_data(df: pd.DataFrame):
     # df = df[df.CodeName == "MCUDiagnosticEventOccurred"]
     single_file_suds_entries = []
+    suds_size = 0
     for index, df_row in df.iterrows():
         if "SUDS" not in str(df_row.Data):
             continue
@@ -156,12 +157,26 @@ def convert_df_to_suds_analog_data(df: pd.DataFrame):
             date_start = date_start.split("+")[0]
 
             row = [date_start] + [int(x) for x in field[start:].strip().split(':')[1:]]
-            if len(row) != 6:
+            if suds_size == 0 and (len(row) in [6, 7]):
+                suds_size = len(row)
+            if len(row) != suds_size:
                 print("SUDS error:", field, row)
                 continue
             single_file_suds_entries.append(row)
-    sdf = pd.DataFrame(single_file_suds_entries,
-                       columns=["DATE", "SUDS", "VOLTAGE", "CURRENT", "DELTA_TIME", "INJ_PROGRESS"])
+    if suds_size == 6:
+        columns = ["DATE", "SUDS", "VOLTAGE", "CURRENT", "DELTA_TIME", "INJ_PROGRESS"]
+    else:
+        """
+        FAULT_CODE: Indicates SUDS fault detected
+            0 = None
+            1 = POST - SUDS check on POST - SUDS detected but no MUDS
+            2 = Disconnected -  SUDS sensor current is low - SUDS Sensor is disconnected
+            3 = Unstable - SUDS signal is unstable
+            4 = Hysteresis_Drift - SUDS signal is in hysteresis zone - possible drift occurrence
+            5 = CAL - SUDS signal did not change during calibration"
+        """
+        columns = ["DATE", "SUDS", "VOLTAGE", "CURRENT", "DELTA_TIME", "INJ_PROGRESS", "FAULT_CODE"]
+    sdf = pd.DataFrame(single_file_suds_entries, columns=columns)
     sdf['DATE'] = pd.to_datetime(sdf['DATE'], utc=True, format='mixed')
     return sdf
 
