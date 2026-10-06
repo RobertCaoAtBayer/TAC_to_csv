@@ -403,16 +403,29 @@ def process_mcu_log_or_zip(log_filename, output_dir, new_oad: bool):
                 end_vols = [float(x) for x in [last_row["vol1"], last_row["vol2"], last_row["vol3"]]]
             else:
                 start_vols = end_vols = [0.0, 0.0, 0.0]
-            show_result(
-                csv_filename=name,
-                new_oad=new_oad,
-                start_volumes=start_vols,
-                end_volumes=end_vols,
-                filename_list=file_list,
-                sdet_inject_data_df=sdet_inject_data_df
-            )
+            try:
+                show_result(
+                    csv_filename=name,
+                    new_oad=new_oad,
+                    start_volumes=start_vols,
+                    end_volumes=end_vols,
+                    filename_list=file_list,
+                    sdet_inject_data_df=sdet_inject_data_df
+                )
+            except Exception as e:
+                print("Failed to show result for", digest_name, "due to", e)
+                with open(os.path.join(output_dir, "error_log.txt"), "a") as error_fh:
+                    error_fh.write(f"Failed to show result for {digest_name} due to {e}\n")
+            print("b", digest_name)
         else:
-            show_result(csv_filename=name, filename_list=file_list, new_oad=new_oad, )
+            print("c", digest_name)
+            try:
+                show_result(csv_filename=name, filename_list=file_list, new_oad=new_oad, )
+            except Exception as e:
+                print("Failed to show result for", digest_name, "due to", e)
+                with open(os.path.join(output_dir, "error_log.txt"), "a") as error_fh:
+                    error_fh.write(f"Failed to show result for {digest_name} due to {e}\n")
+            print("d", digest_name)
 
     print("Done")
 
