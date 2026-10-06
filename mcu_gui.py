@@ -87,12 +87,13 @@ PULSES_PER_10ML = 83577         # Centargo count per 10 ml
 
 
 class InjectDigestData:
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, output_dir: str = "output"):
         self.data = []
         self.headers = []
         self._df = None
         self.protocol = None
         self._phase_time = None
+        self.output_dir = output_dir
         self._phase_durations = []   # phase duration in seconds
         self.verbose = verbose
         self.protocol_extra = ""  # name etc
@@ -573,7 +574,7 @@ class InjectDigestData:
                   np.average(pressure_errors),
                   np.std(pressure_errors))
             try:
-                with open("pressure_error.csv", "a") as fh:
+                with open(os.path.join(self.output_dir, "pressure_error.csv"), "a") as fh:
                     arr = [phase_data[0],  # name
                            phase_data[3],  # flow
                            np.min(pressure_errors),
@@ -802,7 +803,7 @@ def show_result(**kwargs):
     output_file(html_filename, title=title)
     dir_name = str(os.path.dirname(inject_digest_csv_filename))
 
-    dd = InjectDigestData()
+    dd = InjectDigestData(output_dir=dir_name)
     dd.load_file(inject_digest_csv_filename, verbose=False)
 
     # protocol_0001_injectdigest.csv -> protocol_0001_digest.csv
