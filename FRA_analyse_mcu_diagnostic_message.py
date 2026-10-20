@@ -4,8 +4,6 @@ based on the MCU diagnostic alert type to allow for easier analysis.
 """
 import pandas as pd
 import os.path
-
-from numpy.ma.extras import unique
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
